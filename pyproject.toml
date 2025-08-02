@@ -1,0 +1,15 @@
+[project]
+name = "webfunreflex"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "aiofiles>=24.1.0",
+    "fastapi>=0.115.12",
+    "httpx>=0.28.1",
+    "plotly>=6.2.0",
+    "python-statemachine[diagrams]>=2.5.0",
+    "reaktiv>=0.15.1",
+    "reflex>=0.7.12",
+]
