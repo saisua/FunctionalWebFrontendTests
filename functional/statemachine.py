@@ -4,30 +4,20 @@ import weakref
 import reflex as rx
 
 from statemachine import StateMachine as SM, State
-from statemachine.state import (
-	TransitionList,
-	CallbackSpecList,
-	Transition,
-)
 from statemachine.event import Event
 
 
 class StateMachine(SM):
 	def _serialize(self) -> dict[str, Any]:
-		print("############## SERIALIZING ##############")
 		serialized = dict()
 		for k, v in self.__dict__.items():
-			if not isinstance(v, sm.State):
+			if not isinstance(v, State):
 				continue
 
 			value = v.value
 
-			print(f"{k=} {value=} {type(value)=}")
-
 			if isinstance(value, weakref.ReferenceType):
 				value = value()
-
-			print(f"{k=} {value=} {type(value)=}")
 
 			serialized[k] = value
 
