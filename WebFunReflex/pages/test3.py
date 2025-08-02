@@ -11,11 +11,6 @@ import statemachine as sm
 MINIMUM = 0
 
 
-@rx.serializer
-def serialize_state(state: sm.State) -> Any:
-	return state.value
-
-
 class StateMachine(StateMachine):
 	rx_state: rx.State = None
 
@@ -122,16 +117,26 @@ def test3() -> rx.Component:
 						"Increment",
 						on_click=Test3.increment,
 						color_scheme="grass",
+						role="math",
 					),
 					rx.button(
 						"Decrement",
 						on_click=Test3.decrement,
 						color_scheme="ruby",
+						role="math",
 					),
 				),
 				rx.hstack(
-					rx.button("Enable", on_click=Test3.enable),
-					rx.button("Disable", on_click=Test3.disable),
+					rx.button(
+						"Enable",
+						on_click=Test3.enable,
+						role="main",
+					),
+					rx.button(
+						"Disable",
+						on_click=Test3.disable,
+						role="main",
+					),
 				),
 				rx.button(
 					"Reset",
@@ -143,6 +148,7 @@ def test3() -> rx.Component:
 					"Graph",
 					on_click=Test3.graph,
 					color_scheme="purple",
+					role="document",
 				),
 				align_items="center",
 			),

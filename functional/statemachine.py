@@ -85,25 +85,3 @@ class rxState:
 @rx.serializer
 def serialize_state(state: State) -> Any:
 	return state.value
-
-
-@rx.serializer
-def serialize_transition_list(
-	transition_list: TransitionList
-) -> list[Transition]:
-	return transition_list.transitions
-
-
-@rx.serializer
-def serialize_event(event: Event) -> None:
-	return None
-
-
-@rx.serializer
-def serialize_transition(transition: Transition) -> None:
-	return None
-
-
-@rx.serializer
-def serialize_callback_spec_list(callback_spec_list: CallbackSpecList) -> None:
-	return None
