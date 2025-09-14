@@ -1,0 +1,1 @@
+Here it would be implemented all frontend pages and views

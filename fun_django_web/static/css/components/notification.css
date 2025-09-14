@@ -1,0 +1,33 @@
+.notification {
+    /* Layout */
+    position: fixed;
+    right: 20px;
+    bottom: -100px;
+    z-index: 9999;
+
+    /* Box model */
+    padding: 15px;
+    border-radius: 5px;
+
+    /* Typography */
+    color: white;
+
+    /* Visuals */
+    background-color: #ff4444;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+
+    /* Animations */
+    animation: 
+        NotificationSlideIn 0.5s forwards,
+        NotificationSlideOut 0.5s forwards 4s;
+}
+
+@keyframes NotificationSlideIn {
+    from { bottom: -100px; }
+    to { bottom: 20px; }
+}
+
+@keyframes NotificationSlideOut {
+    from { bottom: 20px; }
+    to { bottom: -100px; }
+}

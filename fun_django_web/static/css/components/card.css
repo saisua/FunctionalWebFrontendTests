@@ -1,0 +1,58 @@
+.main-card {
+    /* Layout */
+    container-type: inline-size;
+    display: grid;
+    gap: var(--space-md);
+    align-content: start;
+
+    /* Box model */
+    padding: clamp(1rem, 3vw, 2rem);
+    border: 1px solid rgba(var(--accent));
+    border-radius: var(--radius-md);
+
+    /* Visuales */
+    background: rgb(var(--accent), 0.7);
+    box-shadow: 0 2px 8px rgba(var(--shadow));
+}
+
+.card {
+    /* Box model */
+    padding: var(--space-md);
+    border-radius: var(--radius-md);
+
+    /* Visuales */
+    background: rgb(var(--bg));
+    box-shadow: 0 8px 28px rgba(var(--shadow), 0.06);
+}
+
+.steps-card {
+    /* Layout */
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    min-width: 220px;
+}
+
+.step {
+    /* Layout */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    /* Box model */
+    padding: 0.5rem;
+    border-radius: 8px;
+}
+
+@container (min-width: 520px) {
+    .card-horizontal {
+        display: flex;
+        gap: var(--space-md);
+        align-items: center;
+    }
+
+    .steps-card {
+        position: sticky;
+        top: calc(var(--space-md) + 12px);
+    }
+}

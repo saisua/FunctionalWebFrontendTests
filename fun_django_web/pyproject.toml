@@ -1,0 +1,13 @@
+[project]
+name = "fun-django-web"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "aiofiles>=24.1.0",
+    "django>=5.2.6",
+    "dotenv>=0.9.9",
+    "requests>=2.32.5",
+    "yattag>=1.16.1",
+]

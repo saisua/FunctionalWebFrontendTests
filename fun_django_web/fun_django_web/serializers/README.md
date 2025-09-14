@@ -1,0 +1,1 @@
+Here it would be implemented all backend DBs' serializers to convert from and to JSON

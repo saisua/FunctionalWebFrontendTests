@@ -1,0 +1,49 @@
+.app-header {
+    /* Layout */
+    display: flex;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 60;
+    gap: var(--space-md);
+    height: var(--header-height);
+
+    /* Box model */
+    padding: calc(var(--space-sm)) var(--space-md);
+    border-bottom: 1px solid rgba(var(--muted), 0.06);
+
+    /* Visuals */
+    background: linear-gradient(0deg, rgba(var(--surface), 0.55), transparent);
+    backdrop-filter: blur(6px);
+}
+
+.brand {
+    /* Layout */
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.brand .logo {
+    /* Layout */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    /* Box model */
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+
+    /* Visuals */
+    background: linear-gradient(135deg, rgba(var(--accent), 0.12), transparent);
+    font-weight: 700;
+}
+
+.header-actions {
+    /* Layout */
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin-left: auto;
+}

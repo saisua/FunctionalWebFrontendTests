@@ -1,0 +1,15 @@
+@import "/static/css/variables.css";
+@import "/static/css/theme.css";
+@import "/static/css/utilities.css";
+@import "/static/css/layout.css";
+@import "/static/css/responsive.css";
+@import "/static/css/components/header.css";
+@import "/static/css/components/sidebar.css";
+@import "/static/css/components/card.css";
+@import "/static/css/components/grid.css";
+@import "/static/css/components/table.css";
+@import "/static/css/components/notification.css";
+@import "/static/css/components/footer.css";
+@import "/static/css/components/button.css";
+@import "/static/css/components/loading.css";
+@import "/static/css/pyscript.css";

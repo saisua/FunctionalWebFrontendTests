@@ -1,0 +1,1 @@
+Here it would be implemented all backend endpoints and views to be called from the frontend

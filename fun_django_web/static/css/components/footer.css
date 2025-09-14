@@ -1,0 +1,18 @@
+.app-footer {
+    /* Layout */
+    width: 100%;
+    text-align: center;
+    margin-top: auto;
+
+    /* Box model */
+    padding: var(--space-md);
+    box-sizing: border-box;
+    border-top: 1px solid rgba(var(--muted), 0.06);
+
+    /* Tipography */
+    color: rgb(var(--muted));
+    font-size: 0.95rem;
+
+    /* Visuals */
+    background-color: rgb(var(--bg));
+}

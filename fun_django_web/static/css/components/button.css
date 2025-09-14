@@ -1,0 +1,96 @@
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-md);
+    border-radius: var(--radius-md);
+    border: none;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    text-decoration: none;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.btn-primary {
+    background-color: rgb(var(--accent));
+    color: white;
+    box-shadow: 
+        0 4px 0 rgba(var(--accent), 0.8),
+        0 6px 12px rgba(var(--shadow), 0.15);
+    position: relative;
+    top: 0;
+}
+
+.btn-primary:hover {
+    background-color: rgba(var(--accent));
+    transform: translateY(1px);
+    box-shadow:
+        0 2px 0 rgba(var(--accent), 0.8),
+        0 4px 8px rgba(var(--shadow), 0.2);
+    top: -1px;
+}
+
+.btn-primary:active {
+    transform: translateY(3px);
+    box-shadow: 
+        0 1px 0 rgba(var(--accent), 0.8),
+        0 2px 4px rgba(var(--shadow), 0.1);
+    top: -3px;
+}
+
+.btn-secondary {
+    background-color: rgb(var(--surface));
+    color: rgb(var(--text));
+    border: 1px solid rgba(var(--muted), 0.2);
+}
+
+.btn-secondary:hover {
+    background-color: rgba(var(--surface), 0.8);
+    border-color: rgba(var(--accent), 0.3);
+}
+
+.btn-sm {
+    padding: var(--space-xs) var(--space-sm);
+    font-size: 0.875rem;
+}
+
+.btn-lg {
+    padding: var(--space-md) var(--space-lg);
+    font-size: 1.125rem;
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+.btn-loading {
+    position: relative;
+    color: transparent !important;
+}
+
+.btn-loading::after {
+    content: "";
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+@media (max-width: 768px) {
+    .btn {
+        width: 100%;
+        padding: var(--space-sm);
+    }
+}

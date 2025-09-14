@@ -1,0 +1,7 @@
+script-py {
+	position: absolute;
+}
+
+script-py:not(:empty) {
+	position: inherit;
+}

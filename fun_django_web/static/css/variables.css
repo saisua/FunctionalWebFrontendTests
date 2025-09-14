@@ -1,0 +1,23 @@
+:root{
+	/* spacing scale */
+	--space-xs: 0.25rem;
+	--space-sm: 0.5rem;
+	--space-md: 1rem;
+	--space-lg: 1.5rem;
+	--space-xl: 2.5rem;
+
+	/* layout sizes */
+	--header-height: 64px;
+
+	--sidebar-width: 150px; /* expanded */
+	--sidebar-collapsed: 64px; /* collapsed width */
+	--max-content-width: 1200px;
+
+	/* type */
+	--fs-base: clamp(0.9rem, 0.9rem + 0.6vw, 1.125rem);
+	--fs-scale-factor: 1.15;
+
+	--radius-sm: 8px;
+	--radius-md: 14px;
+	--transition-fast: 180ms cubic-bezier(.2,.9,.3,1);
+}

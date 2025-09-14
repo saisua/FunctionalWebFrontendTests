@@ -1,0 +1,55 @@
+.muted {
+    color: rgb(var(--muted));
+}
+
+.text-center {
+    text-align: center;
+}
+
+.p-sm {
+    padding: var(--space-sm);
+}
+
+.p-md {
+    padding: var(--space-md);
+}
+
+.mt-auto {
+    margin-top: auto;
+}
+
+.shadow-sm {
+    box-shadow: 0 1px 3px rgba(var(--shadow), 0.1);
+}
+
+.shadow-md {
+    box-shadow: 0 4px 6px rgba(var(--shadow), 0.1);
+}
+
+.rounded {
+    border-radius: var(--radius-md);
+}
+
+.flex {
+    display: flex;
+}
+
+.flex-col {
+    flex-direction: column;
+}
+
+.gap-sm {
+    gap: var(--space-sm);
+}
+
+.gap-md {
+    gap: var(--space-md);
+}
+
+.hidden {
+    display: none !important;
+}
+
+.transition {
+    transition: var(--transition-fast);
+}

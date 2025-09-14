@@ -1,0 +1,1 @@
+Here it would be implemented all URLs rules that route to the different frontend views and API endpoints

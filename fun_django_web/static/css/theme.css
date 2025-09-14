@@ -1,0 +1,20 @@
+:root {
+	--bg: 255 255 255; /* using RGB for easy alpha use */
+	--surface: 247 247 249;
+	--text: 22 24 27;
+	--muted: 99 102 105;
+	--accent: 35 125 255;
+	--shadow: 16 24 40;
+}
+
+@media (prefers-color-scheme: dark){
+	:root{
+	--bg: 10 12 15;
+	--surface: 18 20 23;
+	--text: 230 230 230;
+	--muted: 140 145 150;
+	--accent: 80 150 255;
+	--shadow: 255 255 255;
+	}
+}
+
