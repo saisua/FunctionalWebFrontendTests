@@ -70,6 +70,8 @@ class SerializerCSS:
 	@classmethod
 	def generate(cls):
 		data = dict(cls.__dict__)
+		if "tags" in data:
+			data.update(data.pop("tags"))
 
 		remaining_keys = list()
 		for key, value in list(data.items()):
