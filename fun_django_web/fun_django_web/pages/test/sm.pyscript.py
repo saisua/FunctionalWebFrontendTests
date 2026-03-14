@@ -1,14 +1,65 @@
+from typing import Optional, Union, List, Callable
 import asyncio
 
-from pyscript import document, window
+try:
+    from pyscript import document, window
 
-from state_machine import StateMachine, State, transition
+    from state_machine import StateMachine, State, transition
 
-from workflows import store
+    from workflows import store
 
-from load_workflow import LoadWorkflow
+    from load_workflow import LoadWorkflow
 
-loop = asyncio.get_running_loop()
+    loop = asyncio.get_running_loop()
+
+    initial_state = "disabled"
+    if 'state=' in window.location.search:
+        initial_state = window.location.search.split('state=')[1].split('&')[0]
+
+    generate_sm_graph = False
+except ImportError:
+    generate_sm_graph = True
+
+    from unittest.mock import Mock
+
+    from statemachine import StateMachine, State
+    from statemachine.state import _ToState, _FromState
+
+    outside_froms = list()
+
+    def outside(
+        self,
+        target_url: str,
+        state: str | None = None,
+        *,
+        before: Optional[Union[str, Callable, List[Callable]]] = None,
+        **kwargs
+    ):
+        outside_froms.append((self._state.name, target_url, state))
+
+        return self.__call__(self._state, **kwargs)
+
+    _ToState.outside = outside
+    _FromState.outside = outside
+
+    transition = Mock()
+
+    store = Mock()
+
+    LoadWorkflow = Mock()
+
+    loop = Mock()
+
+    document = Mock()
+    window = Mock()
+
+    status_value = Mock()
+    counter_value = Mock()
+    dcounter_value = Mock()
+    load_workflow = Mock()
+
+    initial_state = "disabled"
+
 
 status_value = document.getElementById("statusValue")
 counter_value = document.getElementById("counterValue")
@@ -18,10 +69,6 @@ load_workflow = LoadWorkflow(
     counter_value,
     dcounter_value,
 )
-
-initial_state = "disabled"
-if 'state=' in window.location.search:
-    initial_state = window.location.search.split('state=')[1].split('&')[0]
 
 
 @store("state.pkl")
@@ -212,3 +259,10 @@ def load(e):
 def leave(e):
     global sm
     sm.leave()
+
+
+if generate_sm_graph:
+    import pickle as pkl
+
+    with open(f"{__file__.replace('.pyscript.py', '.pkl')}", "wb+") as f:
+        pkl.dump({'graph': sm._graph(), 'outside_froms': outside_froms}, f)
