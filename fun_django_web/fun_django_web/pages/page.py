@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Callable, Any
+from typing import Callable, Any, Final
 from functools import partial
 import logging
 import json
@@ -46,6 +46,15 @@ class Page:
 
 	_open_tag: Page._LazyTag
 	_current_tag: Page._LazyTag  # noqa: F821
+
+	_builder_start: Final[list[str]] = [
+		"from js import document",
+		"body = document.getElementsByTagName('body')[0]",
+		"parents = [body]",
+	]
+	_builder_kwarg_replacements: Final[dict[str, str]] = {
+		'klass': 'class'
+	}
 
 	def __init__(self):
 		self.doc = Doc()
@@ -198,6 +207,11 @@ class Page:
 
 		return self.doc.getvalue()
 
+	def builder(self) -> list[str]:
+		if logger.isEnabledFor(logging.DEBUG):
+			logger.debug(f"#\n#\n#\nbuilder {self.html}\n#\n#\n#")
+		return self.html.builder()
+
 	@property
 	def children(self) -> list[Page._LazyTag]:
 		return [self.html]
@@ -289,6 +303,36 @@ class Page:
 						if logger.isEnabledFor(logging.DEBUG):
 							logger.debug(f"{'  ' * depth} {child}")
 						child()
+
+		def builder(self, output: list | None = None, *, depth: int = 1) -> list[str]:
+			if output is None:
+				output = Page._builder_start.copy()
+
+			output.append(f"new_element = document.createElement('{self._args[0]}')")
+			for kwarg, value in self._kwargs.items():
+				kwarg = Page._builder_kwarg_replacements.get(kwarg, kwarg)
+
+				output.append(f"new_element.setAttribute('{kwarg}', '{value}')")
+
+			output.append("parents[-1].appendChild(new_element)")
+
+			if self.children:
+				output.append("parents.append(new_element)")
+
+				for child in self.children:
+					if isinstance(child, Page._LazyTag):
+						child.builder(output=output, depth=depth + 1)
+					elif isinstance(child, partial):
+						if child.func.__qualname__ == "SimpleDoc.text":
+							output.append(f"parents[-1].innerText = '{child.args[0]}'")
+						elif child.func.__qualname__ == "SimpleDoc.asis":
+							output.append(f"parents[-1].innerHTML = '{child.args[0]}'")
+						else:
+							raise NotImplementedError(child)
+
+				output.append("parents.pop(-1)")
+
+			return output
 
 		def __repr__(self) -> str:
 			repr = list("LazyTag")
