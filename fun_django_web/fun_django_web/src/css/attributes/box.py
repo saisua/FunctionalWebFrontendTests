@@ -1,7 +1,7 @@
 from typing import Literal, Final, TypeAlias
 
-from css.screen_size import ScreenSizeCSS
-from css.attributes.hint import HintCSS
+from fun_django_web.src.css.screen_size import ScreenSizeCSS
+from fun_django_web.src.css.attributes.hint import HintCSS
 
 
 class box:

@@ -1,6 +1,6 @@
 from typing import Any
 
-from css.attributes.hint import HintCSS
+from fun_django_web.src.css.attributes.hint import HintCSS
 
 
 class ValueCSS(HintCSS):

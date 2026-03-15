@@ -1,6 +1,6 @@
 from typing import Literal, Final, TypeAlias
 
-from css.attributes.hint import HintCSS
+from fun_django_web.src.css.attributes.hint import HintCSS
 
 
 class layout:
