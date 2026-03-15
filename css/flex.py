@@ -2,6 +2,7 @@ from typing import Literal
 from dataclasses import dataclass, field
 
 from .base import BaseCSS
+from .attributes import layout
 
 
 @dataclass(frozen=True, slots=True)
@@ -9,25 +10,9 @@ class FlexCSS(BaseCSS):
 	"""
 	Properties specific to Flexbox and inline-flex workflows.
 	"""
-	display: Literal[  # pyright: ignore[reportIncompatibleVariableOverride]
-		"flex",
-		"inline-flex"
-	] = field(default="flex")
-	flex_direction: Literal[
-		"row",
-		"row-reverse",
-		"column",
-		"column-reverse",
-		"initial",
-		"inherit",
-	] = field(default="row")
-	flex_wrap: Literal[
-		"nowrap",
-		"wrap",
-		"wrap-reverse",
-		"initial",
-		"inherit",
-	] = field(default="wrap")
+	display: layout.display.flex.hint = field(default="flex")
+	flex_direction: layout.display.flex.direction.hint = field(default="row")
+	flex_wrap: layout.display.flex.wrap.hint = field(default="wrap")
 	justify_content: Literal[
 		"flex-start",
 		"flex-end",
