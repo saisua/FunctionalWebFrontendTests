@@ -67,6 +67,9 @@ class SerializerCSS:
 
 		return key
 
+# TODO: If attr has hint and hint is of type
+# HintCSS, use the hint.attr
+
 	@classmethod
 	def generate(cls):
 		data = dict(cls.__dict__)
