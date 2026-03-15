@@ -1,0 +1,1 @@
+from .test3 import view

@@ -1,0 +1,97 @@
+<html>
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1">
+	<title>MyApp</title>
+	<link rel="icon" href="/static/img/favicon.ico">
+	<link rel="stylesheet" href="/static/css/base.css">
+	<script type="module" src="/static/pyscript/core.js"></script>
+	<script type="py"
+		src="/api/pyscript/get_file?path=fun_django_web/components/base/sidebar/sidebar.pyscript.py"></script>
+	<script type="py" src="/api/pyscript/get_file?path=fun_django_web/components/loading/loading.pyscript.py"></script>
+</head>
+
+<body><py-config hidden="True">{"files": {"/static/py/state_machine.py": "state_machine.py", "/static/py/workflows.py":
+		"workflows.py", "/static/py/notifications.py": "notifications.py",
+		"/api/pyscript/get_file?path=fun_django_web/pages/test/load_workflow.pyscript.py": "load_workflow.py"},
+		"packages": ["python-statemachine", "aiofiles", "aiohttp", "dagio"], "js_modules": {}}</py-config>
+	<div class="app-wrap">
+		<div class="layout">
+			<header class="app-header" id="header">
+				<div class="brand">
+					<div class="logo" aria_hidden="true">A</div>
+					<div class="brand-text">
+						<div style="font-weight:700">MyApp</div>
+						<div class="muted" style="font-size:0.8rem">Small app subtitle</div>
+					</div>
+				</div>
+				<div class="header-actions"><button class="btn" title="Notifications">🔔</button><button class="btn"
+						title="Account">👤</button></div>
+			</header>
+			<aside class="sidebar" role="navigation" aria_label="Main navigation" id="sidebar">
+				<nav><a href="/" class="nav-link"><span class="nav-icon">🏠</span><span class="nav-text">Home</span></a>
+				</nav>
+				<div style="margin-top:auto;display:flex;flex-direction:column;gap:0.5rem;align-items:center"><button
+						class="btn" aria_pressed="false" title="Collapse sidebar"
+						id="collapseBtn">&lt;&lt;</button><small class="muted">v1.0.0</small></div>
+			</aside>
+			<div class="main-content">
+				<div class="content-area" id="content">
+					<main class="app-main main-card" id="mainContent">
+						<script type="py"
+							src="/api/pyscript/get_file?path=fun_django_web/pages/test/sm.pyscript.py"></script>
+						<script-py id="py-2"></script-py>
+						<table class="table">
+							<tbody>
+								<tr class="table-row">
+									<td class="table-cell"><span id="counter">Counter: </span><span
+											id="counterValue">0</span></td>
+									<td class="table-cell"><span id="dcounter">DCounter: </span><span
+											id="dcounterValue">0</span></td>
+									<td class="table-cell"><span id="statusLabel">Status: </span><span
+											id="statusValue">Disabled</span></td>
+								</tr>
+								<tr class="table-row">
+									<td class="table-cell"><button class="btn btn-primary" py-click="increment"
+											id="incrementBtn">Increment</button></td>
+									<td class="table-cell"></td>
+									<td class="table-cell"><button class="btn btn-primary" py-click="decrement"
+											id="decrementBtn">Decrement</button></td>
+								</tr>
+								<tr class="table-row">
+									<td class="table-cell"><button class="btn btn-primary" py-click="enable"
+											id="enableBtn">Enable</button></td>
+									<td class="table-cell"></td>
+									<td class="table-cell"><button class="btn btn-primary" py-click="disable"
+											id="disableBtn">Disable</button></td>
+								</tr>
+								<tr class="table-row">
+									<td class="table-cell"><button class="btn btn-primary" py-click="save"
+											id="saveBtn">Save</button></td>
+									<td class="table-cell"><button class="btn btn-primary" py-click="reset"
+											id="resetBtn">Reset</button></td>
+									<td class="table-cell"><button class="btn btn-primary" py-click="load"
+											id="loadBtn">Load</button></td>
+								</tr>
+								<tr class="table-row">
+									<td class="table-cell"></td>
+									<td class="table-cell"></td>
+									<td class="table-cell"><button class="btn btn-primary" py-click="leave"
+											id="leaveBtn">Leave</button></td>
+								</tr>
+							</tbody>
+						</table>
+					</main>
+				</div>
+			</div>
+		</div>
+		<footer class="app-footer" id="footer">&gt; <span id="year">2026</span> MyApp • Built with responsive CSS
+		</footer>
+	</div>
+	<div class="loading-overlay" id="loading-overlay" style="display: none;">
+		<div class="loading-spinner" id="loading-spinner" style="display: none;"></div>
+	</div><script-py id="py-0"></script-py><script-py id="py-1"></script-py>
+</body>
+
+</html>
