@@ -11,10 +11,21 @@ class view(View):
 	_page = build_page()
 	_stylesheets = CSS
 
-	_test_data = "hello world attribute"
+	test_data: str = "hello world attribute"
+
+	counter: int = 0
+	_disabled_counter: int = 0
+
+	def _increment(self):
+		self._disabled_counter += 1
+		print(f"Count: {self.counter}")
+	
+	def increment(self):
+		...
 
 	def _test_back_method(self):
+		self.test_front_method(event=None)
 		return "hello world back method"
 
-	def test_front_method(self):
-		return "hello world front method"
+	def test_front_method(self, event):
+		return print("hello world front method")

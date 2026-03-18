@@ -49,14 +49,14 @@ def build_page():
 					"button",
 					id="incrementBtn",
 					klass="btn btn-primary",
-					# **{"py-click": "increment"},
+					**{"py-click": "increment"},
 				).text("Increment")
 			with table.cell_2_1:
 				page.tag(
 					"button",
 					id="decrementBtn",
 					klass="btn btn-primary",
-					# **{"py-click": "decrement"},
+					**{"py-click": "view.test_front_method"},
 				).text("Decrement")
 
 			with table.cell_0_2:

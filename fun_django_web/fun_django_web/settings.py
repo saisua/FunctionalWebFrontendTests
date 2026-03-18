@@ -73,6 +73,10 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'fun_django_web.wsgi.application'
 
+SESSION_ENGINE = "django.contrib.sessions.backends.db"
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+SESSION_COOKIE_SECURE = True
+
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
