@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 Tag = SimpleDoc.Tag
 
 
-def page_view(view_fn: Callable[[], Page]) -> HttpResponse:
+def page_view(view_fn: Callable[[], Page]) -> Callable[..., HttpResponse]:
 	def _page_view(*args, **kwargs) -> HttpResponse:
 		page = view_fn()
 
@@ -86,7 +86,7 @@ class Page:
 
 	def __exit__(self, *args, **kwargs):
 		if logger.isEnabledFor(logging.DEBUG):
-			logger.debug(f"Page exit {self._current_tag}", end='')
+			logger.debug(f"Page exit {self._current_tag}")
 		self._open_tag.__exit__(*args, **kwargs)
 		self._open_tag = self._current_tag
 		if logger.isEnabledFor(logging.DEBUG):

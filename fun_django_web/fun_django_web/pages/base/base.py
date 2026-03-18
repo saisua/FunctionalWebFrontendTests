@@ -1,4 +1,4 @@
-from fun_django_web.pages.page import Page
+from fun_django_web.src.page.page import Page
 
 from fun_django_web.components.base.header import render as render_header
 from fun_django_web.components.base.sidebar import render as render_sidebar  # noqa: E501

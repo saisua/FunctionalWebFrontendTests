@@ -1,6 +1,6 @@
 import os
 
-from fun_django_web.pages.page import page_view
+from fun_django_web.src.page.page import page_view
 from fun_django_web.pages.base import render as base
 
 
