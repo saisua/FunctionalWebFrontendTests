@@ -2,7 +2,7 @@ from typing import Literal, Optional
 from dataclasses import dataclass, field
 
 from .base import BaseCSS
-from .attributes import layout
+from .attributes.layout import layout
 
 
 @dataclass(frozen=True, slots=True)
@@ -10,7 +10,7 @@ class GridCSS(BaseCSS):
 	"""
 	Properties specific to the CSS Grid workflow, including visual mapping.
 	"""
-	display: layout.display.grid.hint = field(default="grid")
+	display: layout.display.grid.hint = field(default="grid")  # pyright: ignore[reportIncompatibleVariableOverride]  # noqa: E501
 	grid_template_columns: Optional[list[str]] = field(default=None)
 	grid_template_rows: Optional[list[str]] = field(default=None)
 	grid_template_areas: Optional[list[list[str]]] = field(default=None)

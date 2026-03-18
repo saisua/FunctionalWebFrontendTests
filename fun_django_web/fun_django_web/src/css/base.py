@@ -8,9 +8,6 @@ from .screen_size import ScreenSizeCSS
 
 @dataclass(frozen=True, slots=True)
 class BaseCSS(SerializerCSS):
-	"""
-	Base CSS properties that are applicable in most layout contexts.
-	"""
 	box_sizing: Literal[
 		"border-box",
 		"content-box"
@@ -36,7 +33,6 @@ class BaseCSS(SerializerCSS):
 		it triggers the .validate() static method.
 		"""
 		for f in fields(self):
-			# Resolve Optional types or Union types to check for CSSType subclasses
 			field_type = f.type
 			# Handle Optional[T] which is Union[T, None]
 			origin = getattr(field_type, "__origin__", None)

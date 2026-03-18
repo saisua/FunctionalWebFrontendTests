@@ -53,10 +53,8 @@ def render(*args, **kwargs) -> Page:
 	with page.body:
 		with page.tag("div", klass="app-wrap"):
 			with page.tag("div", klass="layout"):
-				# Header
 				page.tag("header", id="header", klass="app-header")
 
-				# Sidebar
 				page.tag(
 					"aside",
 					id="sidebar",
@@ -65,12 +63,9 @@ def render(*args, **kwargs) -> Page:
 					aria_label="Main navigation",
 				)
 
-				# Main content area
 				with page.tag("div", klass="main-content"):
-					# Content area
 					page.tag("div", id='content', klass="content-area")
 
-			# Footer
 			page.tag("footer", id='footer', klass="app-footer")
 
 	render_header(page)
