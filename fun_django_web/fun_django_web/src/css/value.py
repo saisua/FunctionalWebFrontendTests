@@ -1,10 +1,9 @@
 from typing import Any
 
-from fun_django_web.src.css.attributes.hint import HintCSS
+from fun_django_web.src.css.hint import HintCSS
 
 
 class ValueCSS(HintCSS):
-	"""Base class for custom CSS types that require specific validation."""
 	@staticmethod
 	def validate(value: Any, field_name: str):
 		pass

@@ -1,15 +1,16 @@
-from typing import Any, Final
+from typing import Any, Final, Union, TypeAlias
 import re
 
-from .value import ValueCSS
+from fun_django_web.src.css.value import ValueCSS
+
+
+valid_size_pattern: re.Pattern = re.compile(
+	r"^(\d*\.?\d+)(%|vw|vh|vmin|vmax|px|rem)$"
+)
 
 
 class ScreenSizeCSS(ValueCSS):
-	"""
-	Enforces screen size units: %, vw, vh, vmin, vmax.
-	Allows 'px' only for values <= 50.
-	"""
-
+	hint: TypeAlias = Union[str, "ScreenSizeCSS"]
 	MAX_PX: Final[int] = 50
 
 	@staticmethod
@@ -22,9 +23,7 @@ class ScreenSizeCSS(ValueCSS):
 				f"{field_name} must be a string, got {type(value).__name__}"
 			)
 
-		match = re.match(r"^(\d*\.?\d+)(%|vw|vh|vmin|vmax|px)$", value)
-
-		if not match:
+		if not (match := valid_size_pattern.match(value)):
 			raise ValueError(
 				f"Invalid unit for {field_name}: '{value}'. "
 				"Must use %, vw, vh, vmin, vmax, or px."

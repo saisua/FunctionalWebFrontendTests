@@ -3,7 +3,9 @@ from dataclasses import dataclass, fields, field
 
 from .serializer import SerializerCSS
 from .value import ValueCSS
-from .screen_size import ScreenSizeCSS
+
+from .attributes.layout import layout
+from .attributes.box import box
 
 
 @dataclass(frozen=True, slots=True)
@@ -13,19 +15,14 @@ class BaseCSS(SerializerCSS):
 		"content-box"
 	] = field(default="border-box")
 
-	display: Literal[
-		"block",
-		"inline",
-		"inline-block",
-		"flex",
-		"grid",
-		"none",
-		"contents"
-	] = field(default="block")
+	display: layout.display.hint = field(default="block")
 
-	min_width: Optional[ScreenSizeCSS] = field(default=None)
-	min_height: Optional[ScreenSizeCSS] = field(default=None)
-	max_width: Optional[ScreenSizeCSS] = field(default=None)
+	min_width: Optional[box.width.min.hint] = field(default=None)
+	min_height: Optional[box.height.min.hint] = field(default=None)
+	max_width: Optional[box.width.max.hint] = field(default=None)
+	min_width: Optional[box.width.min.hint] = field(default=None)
+
+	z_index: Optional[layout.z_index.hint] = field(default=None)
 
 	def __post_init__(self):
 		"""

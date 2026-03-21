@@ -1,12 +1,9 @@
 from dataclasses import dataclass, field
 
-from .base import BaseCSS
-from .attributes import layout
+from fun_django_web.src.css.base import BaseCSS
+from fun_django_web.src.css.attributes.layout import layout
 
 
 @dataclass(frozen=True, slots=True)
 class BlockCSS(BaseCSS):
-	"""
-	Focuses on stackable elements and media-query logic.
-	"""
 	display: layout.display.block.hint = field(default="inline-block")  # pyright: ignore[reportIncompatibleVariableOverride]  # noqa: E501
