@@ -125,8 +125,13 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATIC_DIR = BASE_DIR / "static"
+STATIC_ROOT = BASE_DIR / "static_collected"
 STATICFILES_DIRS = [
-    STATIC_DIR,
+    BASE_DIR / "fun_django_web" / "src" / "state_machine",
+    BASE_DIR / "fun_django_web" / "src" / "requests",
+    BASE_DIR / "fun_django_web" / "src" / "workflows",
+    BASE_DIR / "fun_django_web" / "src" / "notifications",
+	STATIC_DIR,
 ]
 
 # Default primary key field type
