@@ -77,6 +77,14 @@ def gen_base_endpoint(
 			"script",
 			type="py",
 			src=str(
+				STATIC_URL / "reactive.py"
+			)
+		)
+
+		page.stag(
+			"script",
+			type="py",
+			src=str(
 				STATIC_URL / "state_machine.py"
 			)
 		)
@@ -88,13 +96,6 @@ def gen_base_endpoint(
 				src=str(built_resources.back_methods.relative_to(ABS_STATIC_URL))
 			)
 
-		if built_resources.front_view_class:
-			page.stag(
-				"script",
-				type="py",
-				src=str(built_resources.front_view_class.relative_to(ABS_STATIC_URL))
-			)
-
 		if built_resources.page_script:
 			page.stag(
 				"script",
@@ -104,6 +105,13 @@ def gen_base_endpoint(
 		else:
 			print(
 				" [-] Not injecting script because of no '_page' attr in",
+			)
+
+		if built_resources.front_view_class:
+			page.stag(
+				"script",
+				type="py",
+				src=str(built_resources.front_view_class.relative_to(ABS_STATIC_URL))
 			)
 
 		if built_resources.stylesheets:

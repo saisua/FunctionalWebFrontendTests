@@ -131,6 +131,7 @@ STATICFILES_DIRS = [
     BASE_DIR / "fun_django_web" / "src" / "requests",
     BASE_DIR / "fun_django_web" / "src" / "workflows",
     BASE_DIR / "fun_django_web" / "src" / "notifications",
+    BASE_DIR / "fun_django_web" / "src" / "reactivity",
 	STATIC_DIR,
 ]
 

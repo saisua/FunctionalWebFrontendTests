@@ -22,6 +22,7 @@ def build_page():
 				page.tag(
 					"span",
 					id="counterValue",
+					get="counter",
 				).text("0")
 
 			with table.cell_1_0:
@@ -93,6 +94,7 @@ def build_page():
 					"button",
 					id="loadBtn",
 					klass="btn btn-primary",
+					if_="counter",
 					**{"py-click": "view.load"},
 				).text("Load")
 
