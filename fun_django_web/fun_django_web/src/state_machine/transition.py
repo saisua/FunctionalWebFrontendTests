@@ -1,4 +1,5 @@
 from typing import Any, Self, Callable
+import inspect
 
 try:
 	from fun_django_web.src.notifications.notifications import show_notification
@@ -23,7 +24,7 @@ class Transition:
 		self.states.update(transition.states)
 		return self
 
-	def __call__(self, state_machine: 'StateMachine' = None, *args: Any, **kwds: Any) -> Any:
+	async def __call__(self, state_machine: 'StateMachine' = None, *args: Any, **kwds: Any) -> Any:
 		if state_machine is None:
 			# This is for type hinting reasons
 			raise ValueError("Weird error during transition: state_machine is required")
@@ -32,7 +33,15 @@ class Transition:
 		next_state, transition_type = self.states.get(curr_state, (None, None))
 
 		if self._before_fn is not None:
-			self._before_fn(state_machine, curr_state, next_state, transition_type)
+			if inspect.iscoroutine(
+				coro := self._before_fn(
+					state_machine,
+					curr_state,
+					next_state,
+					transition_type,
+				)
+			):
+				await coro
 
 		if next_state is None:
 			if hasattr(state_machine, '_on_invalid_transition'):
@@ -46,7 +55,10 @@ class Transition:
 		print(f"{curr_state} -> {next_state}")
 
 		if self._on_fn is not None:
-			self._on_fn(state_machine, curr_state, next_state, transition_type)
+			if inspect.iscoroutine(
+				coro := self._on_fn(state_machine, curr_state, next_state, transition_type)
+			):
+				await coro
 
 		if transition_type == 'outside':
 			try:
@@ -56,7 +68,15 @@ class Transition:
 				pass
 
 		if self._after_fn is not None:
-			self._after_fn(state_machine, curr_state, next_state, transition_type)
+			if inspect.iscoroutine(
+				coro := self._after_fn(
+					state_machine,
+					curr_state,
+					next_state,
+					transition_type
+				)
+			):
+				await coro
 
 	def before(self, fn: Callable):
 		self._before_fn = fn

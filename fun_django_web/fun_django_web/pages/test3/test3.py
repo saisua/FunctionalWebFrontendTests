@@ -82,33 +82,34 @@ class view(View):
 	saved_data: dict | None = None
 
 	def _dincrement(self):
-		self._disabled_counter += 1
+		# print('dincrement', self.disabled_counter)
+		self.disabled_counter += 1
+		# print(' -> dincrement', self.disabled_counter)
 
 	def _get_dincremented(self):
-		dcounter = self._disabled_counter
-		self._disabled_counter = 0
+		dcounter = self.disabled_counter
+		self.disabled_counter = 0
 		return dcounter
 
 	@increment.on
-	def on_increment(self, *args):
+	async def on_increment(self, *args):
 		if self.is_enabled:
 			self.counter += 1
 
 			if self.counter % 3 == 0:
-				self.disable()
+				await self.disable()
 		else:
 			self._dincrement()
 
 	@decrement.on
-	def on_decrement(self, *args):
+	async def on_decrement(self, *args):
 		if self.counter:
 			self.counter -= 1
 		elif self.is_enabled:
-			self.disable()
+			await self.disable()
 
 	@enable.on
 	def on_enable(self, *args):
-		self.counter += self._get_dincremented()
 		self.is_enabled = True
 
 	@disable.on

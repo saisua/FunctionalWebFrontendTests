@@ -79,10 +79,12 @@ class View(ABC, StateMachine):
 
 					self._session[attr] = value
 
-					def getter(self):
+					def getter(self, *, attr=attr):
+						# print(attr, 'getter')
 						return self._session[attr]
 
-					def setter(self, value):
+					def setter(self, value, *, attr=attr):
+						# print(attr, 'setter', value)
 						self._session[attr] = value
 
 					setattr(type(self), attr, property(getter, setter))
@@ -90,21 +92,22 @@ class View(ABC, StateMachine):
 			def __repr__(self):
 				return base_cls.__repr__(self)
 
-			def __getattr__(self, name):
-				# if name == "_session":
-				# 	return super()._session
-				if name in self._session:
-					return self._session[name]
-				raise AttributeError(
-					f"'{type(self).__name__}' "
-					f"object has no attribute '{name}'"
-				)
+			def __getattribute__(self, name):
+				# print("US getattr", name)
+				session_data = object.__getattribute__(self, '_session')
+
+				if name in session_data:
+					return session_data[name]
+
+				return object.__getattribute__(self, name)
 
 			def __setattr__(self, name, value):
+				# print("US setattr", name, value)
 				if name == "_session" or callable(value) or isinstance(value, property):
 					super().__setattr__(name, value)
 				else:
 					self._session[name] = value
+
 		cls = UserSession
 
 		print(base_cls, "init subclass")

@@ -74,7 +74,7 @@ def gen_build_resources(
 	if back_endpoints or back_attr_endpoints:
 		back_endpoints_src: str = '\n'.join((
 			f'def {endpoint_name}(*args, **kwargs): '
-			'return asyncio.ensure_future('
+			'return asyncio.create_task('
 			'make_request('
 			f'"{cls._endpoint}/{endpoint_name}",'
 			f'method={method!r},'
@@ -93,7 +93,12 @@ def gen_build_resources(
 		reference.back_methods = back_methods_path
 
 	front_class_name = "PageView"
-	front_class_def = f'class {front_class_name}(StateMachine):'
+	front_class_def = '\n\t'.join([
+		f'class {front_class_name}(StateMachine, Reactive):',
+		'def __init__(self, *args, **kwargs):',
+		'\tfor base in type(self).__bases__:',
+		'\t\tbase.__init__(self, *args, **kwargs)'
+	])
 
 	front_var_definitions: list[str] = list()
 	source = inspect.getsource(cls.__base__)
