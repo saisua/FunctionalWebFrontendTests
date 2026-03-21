@@ -1,8 +1,19 @@
-import os
 import io
 import requests
 import tarfile
 from pathlib import Path
+
+
+INTERPRETER = "pyodide"
+
+registry_urls = {
+	'pyscript': 'https://registry.npmjs.org/@pyscript/core/latest',
+}
+interpreters = {
+	'pyodide': 'https://registry.npmjs.org/pyodide/latest',
+	'micropython': 'https://registry.npmjs.org/@micropython/micropython-webassembly-pyscript'
+}
+registry_urls[INTERPRETER] = interpreters[INTERPRETER]
 
 
 def _download_file(url: str) -> io.BytesIO:
@@ -17,50 +28,51 @@ def _download_file(url: str) -> io.BytesIO:
 
 def get_pyscript(
 	project_name: str,
-	output_dir: str = "./{project_name}/static/pyscript"
 ):
-	registry_url = 'https://registry.npmjs.org/@pyscript/core/latest'
-
-	output_dir = Path(
-		f"./{output_dir.format(project_name=project_name).lstrip('./')}"
+	static_dir = Path(
+		project_name, "static"
 	)
 
-	if os.path.exists(output_dir):
-		print(f"Directory '{output_dir}' already exists. Skipping all steps.")
-		return
+	for folder, registry_url in registry_urls.items():
+		output_dir = static_dir / folder
 
-	try:
-		print("Fetching latest version information...")
-		response = requests.get(registry_url)
-		response.raise_for_status()
-		data = response.json()
-		tarball_url = data['dist']['tarball']
+		if output_dir.is_dir():
+			print(f"Directory '{output_dir}' already exists. Skipping all steps.")
+			continue
 
-		print(f"Downloading {tarball_url}...")
-		bytes_io = _download_file(tarball_url)
-		print("Download complete.")
-	except requests.exceptions.RequestException as e:
-		print(f"Error during download: {e}")
-		return
+		(output_dir / ".gitignore").write_text('*')
 
-	print(f"Extracting to '{output_dir}'...")
-	try:
-		tar: tarfile.TarFile
-		with tarfile.open(fileobj=bytes_io, mode='r:gz') as tar:
-			members = list()
-			for member in tar.getmembers():
-				print(member.name)
-				if (
-					member.name.startswith('package/dist/')
-					and member.name.endswith('.js')  # noqa: W503
-					or member.name.endswith('.js.map')  # noqa: W503
-				):
-					member.name = os.path.basename(member.name)
-					members.append(member)
-			tar.extractall(path=output_dir, members=members)
-		print("Extraction complete.")
-	except tarfile.TarError as e:
-		print(f"Error during extraction: {e}")
+		try:
+			response = requests.get(registry_url)
+			response.raise_for_status()
+			data = response.json()
+
+			if 'dist' not in data:
+				if 'versions' in data:
+					data = data['versions']
+					data = data[sorted(data.keys())[-1]]
+
+			if 'dist' not in data:
+				raise RuntimeError(f"'dist' folder not found in {folder}")
+
+			tarball_url = data['dist']['tarball']
+
+			print(f"Downloading {tarball_url}...")
+			bytes_io = _download_file(tarball_url)
+			print("Download complete.")
+		except requests.exceptions.RequestException as e:
+			print(f"Error during download: {e}")
+			return
+
+		print(f"Extracting to '{output_dir}'...")
+		try:
+			tar: tarfile.TarFile
+			with tarfile.open(fileobj=bytes_io, mode='r:gz') as tar:
+				tar.extractall(path=output_dir)
+			print("Extraction complete.")
+		except tarfile.TarError as e:
+			print(f"Error during extraction: {e}")
+			return
 
 
 if __name__ == "__main__":
