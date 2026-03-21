@@ -49,14 +49,14 @@ def build_page():
 					"button",
 					id="incrementBtn",
 					klass="btn btn-primary",
-					**{"py-click": "increment"},
+					**{"py-click": "view.increment"},
 				).text("Increment")
 			with table.cell_2_1:
 				page.tag(
 					"button",
 					id="decrementBtn",
 					klass="btn btn-primary",
-					**{"py-click": "view.test_front_method"},
+					**{"py-click": "view.decrement"},
 				).text("Decrement")
 
 			with table.cell_0_2:
@@ -64,14 +64,14 @@ def build_page():
 					"button",
 					id="enableBtn",
 					klass="btn btn-primary",
-					# **{"py-click": "enable"},
+					**{"py-click": "view.enable"},
 				).text("Enable")
 			with table.cell_2_2:
 				page.tag(
 					"button",
 					id="disableBtn",
 					klass="btn btn-primary",
-					# **{"py-click": "disable"},
+					**{"py-click": "view.disable"},
 				).text("Disable")
 
 			with table.cell_0_3:
@@ -79,21 +79,21 @@ def build_page():
 					"button",
 					id="saveBtn",
 					klass="btn btn-primary",
-					# **{"py-click": "save"},
+					**{"py-click": "view.save"},
 				).text("Save")
 			with table.cell_1_3:
 				page.tag(
 					"button",
 					id="resetBtn",
 					klass="btn btn-primary",
-					# **{"py-click": "reset"},
+					**{"py-click": "view.reset"},
 				).text("Reset")
 			with table.cell_2_3:
 				page.tag(
 					"button",
 					id="loadBtn",
 					klass="btn btn-primary",
-					# **{"py-click": "load"},
+					**{"py-click": "view.load"},
 				).text("Load")
 
 			with table.cell_2_4:
@@ -101,7 +101,7 @@ def build_page():
 					"button",
 					id="leaveBtn",
 					klass="btn btn-primary",
-					# **{"py-click": "leave"},
+					**{"py-click": "view.leave"},
 				).text("Leave")
 
 	return page

@@ -38,8 +38,8 @@ def gen_method_endpoint(
             ))
             user_session._rpc_pending.clear()
 
-        # print(f"{sent_data=}")
-        # print(f"session={dict(request.session.items())}")
+        print(f"{sent_data=}")
+        print(f"session={dict(request.session.items())}")
 
         return JsonResponse(sent_data, status=201)
 

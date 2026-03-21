@@ -13,11 +13,13 @@ from .rpc_pending import add_rpc_pending
 from .build_resources import gen_build_resources
 from .base_endpoint import gen_base_endpoint
 
+from fun_django_web.src.state_machine.state_machine import StateMachine
+
 
 STATIC_URL = Path(getattr(settings, "STATIC_URL", 'static').lstrip('/'))
 
 
-class View(ABC):
+class View(ABC, StateMachine):
 	_skip_subclass_init: bool = False
 	_endpoint: Path
 
@@ -65,6 +67,15 @@ class View(ABC):
 
 					if isinstance(value, property):
 						continue
+					if (
+						not isinstance(value, (
+							int, list, tuple, set, dict, str, bytes, float, bool
+						)) and not (
+							hasattr(value, '__getstate__') and
+							hasattr(value, '__setstate__')
+						)
+					):
+						continue
 
 					self._session[attr] = value
 
@@ -80,6 +91,8 @@ class View(ABC):
 				return base_cls.__repr__(self)
 
 			def __getattr__(self, name):
+				# if name == "_session":
+				# 	return super()._session
 				if name in self._session:
 					return self._session[name]
 				raise AttributeError(
@@ -164,7 +177,7 @@ class View(ABC):
 			front_functions.append(f"_{name}")
 
 		# Generate a static script that builds the body
-		gen_build_resources(
+		built_resources = gen_build_resources(
 			cls,
 			view_static_path,
 			back_endpoints,
@@ -179,8 +192,7 @@ class View(ABC):
 				str(cls._endpoint),
 				gen_base_endpoint(
 					cls,
-					bool(len(back_endpoints) + len(back_attr_endpoints)),
-					bool(len(front_functions)),
+					built_resources,
 				),  # type: ignore
 			)
 		)
