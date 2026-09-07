@@ -4,6 +4,7 @@ from itertools import chain
 from fun_django_web.src.css.hint import HintCSS
 
 from fun_django_web.src.css.values.color import Color
+from fun_django_web.src.css.values.screen_size import ScreenSizeCSS
 
 from .bg_image import image
 from .border.base import border
@@ -20,7 +21,10 @@ class visuals:
 
 		class color(HintCSS):
 			attribute: Final[str] = 'background-color'
-			hint: TypeAlias = Color.hint
+			hint: TypeAlias = Union[
+				Color.hint,
+				Literal["transparent"]
+			]
 
 	class break_(HintCSS):
 		attribute: Final[str] = "box-decoration-break"
@@ -87,3 +91,24 @@ class visuals:
 			if angle is not None:
 				result.append(angle)
 			return f"linear-gradient({','.join(chain(result, colors))})"  # pyright: ignore[reportCallIssue, reportArgumentType]  # noqa: E501
+
+	class outline:
+		class color(HintCSS):
+			attribute: Final[str] = "outline-color"
+			hint: TypeAlias = Color.hint
+
+		class offset(HintCSS):
+			attribute: Final[str] = "outline-offset"
+			hint: TypeAlias = ScreenSizeCSS.hint
+
+	class overflow(HintCSS):
+		attribute: Final[str] = "overflow"
+		hint: TypeAlias = Literal[
+			"visible",
+			"hidden",
+			"clip",
+			"scroll",
+			"auto",
+			"initial",
+			"inherit"
+		]

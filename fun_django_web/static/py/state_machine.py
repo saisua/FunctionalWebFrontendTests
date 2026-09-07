@@ -6,14 +6,14 @@ from statemachine.exceptions import TransitionNotAllowed  # noqa: F401
 from statemachine import State, StateMachine  # noqa: F401
 
 try:
-	from pyscript import window, document, ffi
+	from pyscript import window, document, ffi  # noqa: E501  # pyright: ignore[reportAttributeAccessIssue]
 except ImportError:
 	print("[WARNING] pyscript not found")
 	window = None
 	document = None
 	ffi = None
 
-from notifications import show_notification
+from fun_django_web.fun_django_web.src.notifications.notifications import show_notification
 
 
 def _partial_to_outside(target_url: str, state: str | None = None):
@@ -69,4 +69,3 @@ def transition(fn, /):
 
 _ToState.outside = outside
 _FromState.outside = outside
-

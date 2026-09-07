@@ -9,6 +9,7 @@ from .build_page import build_page
 from .css import CSS
 
 from fun_django_web.src.css.components.notification import NotificationCSS
+from fun_django_web.src.css.components.button import ButtonCSS
 
 
 class view(View):
@@ -17,16 +18,17 @@ class view(View):
 	_stylesheets = [
 		CSS,
 		NotificationCSS,
+		ButtonCSS,
 	]
 
-	enabled: State = State('enabled', initial=True)
-	disabled: State = State('disabled')
-	incremented: State = State('incremented')
-	decremented: State = State('decremented')
-	dincremented: State = State('dincremented')
-	saved: State = State('saved')
-	loaded: State = State('loaded')
-	reseted: State = State('reseted')
+	enabled = State('enabled', initial=True)
+	disabled = State('disabled')
+	incremented = State('incremented')
+	decremented = State('decremented')
+	dincremented = State('dincremented')
+	saved = State('saved')
+	loaded = State('loaded')
+	reseted = State('reseted')
 
 	enable: Transition = (
 		disabled.to(enabled)
@@ -92,7 +94,7 @@ class view(View):
 		return dcounter
 
 	@increment.on
-	async def on_increment(self, *args):
+	async def on_increment(self, *_):
 		if self.is_enabled:
 			self.counter += 1
 
@@ -102,18 +104,18 @@ class view(View):
 			self._dincrement()
 
 	@decrement.on
-	async def on_decrement(self, *args):
+	async def on_decrement(self, *_):
 		if self.counter:
 			self.counter -= 1
 		elif self.is_enabled:
 			await self.disable()
 
 	@enable.on
-	def on_enable(self, *args):
+	def on_enable(self, *_):
 		self.is_enabled = True
 
 	@disable.on
-	def on_disable(self, *args):
+	def on_disable(self, *_):
 		self.is_enabled = False
 
 	def _save(self, data: dict):
@@ -123,14 +125,14 @@ class view(View):
 		return self._saved_data
 
 	@save.on
-	def on_save(self, *args):
+	def on_save(self, *_):
 		self._save(dict(
 			is_enabled=self.is_enabled,
 			counter=self.counter,
 		))
 
 	@load.on
-	def on_load(self, *args):
+	def on_load(self, *_):
 		loaded_data = self._load()
 
 		if loaded_data is None:
@@ -140,7 +142,7 @@ class view(View):
 		self.counter = loaded_data['counter']
 
 	@reset.on
-	def on_reset(self, *args):
+	def on_reset(self, *_):
 		self._reset_sm_state()
 		self.is_enabled = self._current_state == 'enabled'
 		self.counter = 0

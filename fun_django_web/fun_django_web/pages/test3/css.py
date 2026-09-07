@@ -25,7 +25,7 @@ class CSS(SerializerCSS):
 			"Arial"
 		]
 		font_size: text.font.size.hint = "16px"
-		line_height: text.line_separation.hint = "1.45px"
+		line_height: text.line.separation.hint = "1.45px"
 		color: text.color.hint = 'white'
 
 		background_color: visuals.background.color.hint = "rgb(10, 12, 15)"

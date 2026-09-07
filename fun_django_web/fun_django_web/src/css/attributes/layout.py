@@ -88,3 +88,102 @@ class layout:
                 "block",
                 "inline-block",
             ]
+
+    class align(HintCSS):
+        attribute: Final[str] = "align-self"
+        hint: TypeAlias = Literal[
+            "auto",
+            "stretch",
+            "center",
+            "flex-start",
+            "flex-end",
+            "baseline",
+            "initial",
+            "inherit"
+        ]
+
+        class content(HintCSS):
+            attribute: Final[str] = "align-content"
+            hint: TypeAlias = Literal[
+                "stretch",
+                "center",
+                "flex-start",
+                "flex-end",
+                "space-between",
+                "space-around",
+                "space-evenly",
+                "initial",
+                "inherit"
+            ]
+
+        class children(HintCSS):
+            attribute: Final[str] = "align-items"
+            hint: TypeAlias = Literal[
+                "normal",
+                "stretch",
+                "center",
+                "start",
+                "end",
+                "flex-start",
+                "flex-end",
+                "baseline",
+                "initial",
+                "inherit"
+            ]
+
+        class text(HintCSS):
+            attribute: Final[str] = "text-align"
+            hint: TypeAlias = Literal[
+                "left",
+                "right",
+                "center",
+                "justify",
+                "initial",
+                "inherit",
+            ]
+
+    class justify(HintCSS):
+        attribute: Final[str] = "justify-self"
+        hint: TypeAlias = Literal[
+            "auto",
+            "normal",
+            "stretch",
+            "start",
+            "left",
+            "center",
+            "end",
+            "right",
+            "safe",
+            "unsafe",
+            "initial",
+            "inherit"
+        ]
+
+        class content(HintCSS):
+            attribute: Final[str] = "justify-content"
+            hint: TypeAlias = Literal[
+                "stretch",
+                "center",
+                "flex-start",
+                "flex-end",
+                "space-between",
+                "space-around",
+                "space-evenly",
+                "initial",
+                "inherit"
+            ]
+
+        class children(HintCSS):
+            attribute: Final[str] = "justify-items"
+            hint: TypeAlias = Literal[
+                "normal",
+                "stretch",
+                "center",
+                "start",
+                "end",
+                "flex-start",
+                "flex-end",
+                "baseline",
+                "initial",
+                "inherit"
+            ]

@@ -6,6 +6,7 @@ from textwrap import dedent
 from dataclasses import  dataclass, field
 
 from fun_django_web.src.page.page import Page
+from fun_django_web.src.state_machine.state_machine import StateMachine
 
 
 @dataclass
@@ -124,6 +125,9 @@ def gen_build_resources(
 			if segment:
 				front_var_definitions.append(segment)
 
+	for attr in StateMachine.__annotations__.keys():
+		pass
+
 	if front_var_definitions:
 		front_var_definitions_src = '\n\t' + '\n\t'.join(front_var_definitions)
 	else:
@@ -163,13 +167,18 @@ def gen_build_resources(
 		front_back_functions_src or
 		front_var_definitions_src
 	):
+		front_startup_code = getattr(cls, '_front_startup', '')
+		if front_startup_code:
+			front_startup_code = '\n' + front_startup_code
+
 		front_view_path = view_static_path / "front_view_class.py"
 		front_view_path.write_text(
 			front_class_def +
 			front_var_definitions_src +
 			front_back_functions_src +
 			front_functions_src +
-			'\nview = PageView()'
+			'\nview = PageView()' +
+			front_startup_code
 		)
 		reference.front_view_class = front_view_path
 

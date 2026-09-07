@@ -7,7 +7,17 @@ requires-python = ">=3.12"
 dependencies = [
     "aiofiles>=24.1.0",
     "django>=5.2.6",
+    "django-pyoidc>=1.0.12",
     "dotenv>=0.9.9",
+    "pydot>=4.0.1",
+    "rdflib>=7.6.0",
     "requests>=2.32.5",
     "yattag>=1.16.1",
+]
+
+[dependency-groups]
+docs = [
+    "sphinx>=9.1.0",
+    "sphinx-autodoc-annotation>=1.0.post1",
+    "sphinx-rtd-theme>=3.1.0",
 ]

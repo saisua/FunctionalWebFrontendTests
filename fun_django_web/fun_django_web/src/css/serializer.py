@@ -16,7 +16,7 @@ PRIMITIVE_TYPES = (
 
 
 class SerializerCSS:
-	_output_paths: Path | list[Path]
+	_output_paths: Path | str | list[Path | str]
 	_wrapper_start: str
 	_wrapper_end: str
 

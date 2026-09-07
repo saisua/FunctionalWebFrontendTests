@@ -14,11 +14,13 @@ from .build_resources import gen_build_resources
 from .base_endpoint import gen_base_endpoint
 
 from fun_django_web.src.state_machine.state_machine import StateMachine
+from utils.docstr import Doc
 
 
 STATIC_URL = Path(getattr(settings, "STATIC_URL", 'static').lstrip('/'))
 
 
+@Doc("Base View class for new web page views")
 class View(ABC, StateMachine):
 	_skip_subclass_init: bool = False
 	_endpoint: Path

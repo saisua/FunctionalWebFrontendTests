@@ -1,0 +1,5 @@
+Implement a Solid utility using django-pyoidc and rdflib
+
+Ideally it should be doable both in front and back.
+
+We need to log in, request data and add data, maybe not logging in, only storing in session storage

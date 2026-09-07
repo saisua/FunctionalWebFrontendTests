@@ -2,9 +2,15 @@
 	--bg: 255 255 255; /* using RGB for easy alpha use */
 	--surface: 247 247 249;
 	--text: 22 24 27;
+	--primary: 35 125 255;
+	--secondary: 255 255 255;
 	--muted: 99 102 105;
 	--accent: 35 125 255;
 	--shadow: 16 24 40;
+	--success: 0 200 0;
+	--danger: 200 0 0;
+	--warning: 200 200 0;
+	--info: 0 0 200;
 }
 
 @media (prefers-color-scheme: dark){
@@ -12,9 +18,15 @@
 	--bg: 10 12 15;
 	--surface: 18 20 23;
 	--text: 230 230 230;
+	--primary: 35 125 255;
+	--secondary: 255 255 255;
 	--muted: 140 145 150;
 	--accent: 80 150 255;
 	--shadow: 255 255 255;
+	--success: 0 200 0;
+	--danger: 200 0 0;
+	--warning: 200 200 0;
+	--info: 0 0 200;
 	}
 }
 

@@ -124,8 +124,12 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
-STATIC_DIR = BASE_DIR / "static"
-STATIC_ROOT = BASE_DIR / "static_collected"
+if not DEBUG:
+    STATIC_DIR = BASE_DIR / "static"
+    STATIC_ROOT = BASE_DIR / "static_collected"
+else:
+    STATIC_DIR = BASE_DIR / "static_collected"
+
 STATICFILES_DIRS = [
     BASE_DIR / "fun_django_web" / "src" / "state_machine",
     BASE_DIR / "fun_django_web" / "src" / "requests",

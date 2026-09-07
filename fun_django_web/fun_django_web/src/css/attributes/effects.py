@@ -1,4 +1,4 @@
-from typing import Final, TypeAlias, Union
+from typing import Final, TypeAlias, Union, Literal
 
 from fun_django_web.src.css.hint import HintCSS
 
@@ -49,3 +49,49 @@ class effects:
 				for sel_time, selector in selectors
 			)
 			return f"@keyframes {name}{{\n\t{selectors_src}\n}}"
+
+	class cursor(HintCSS):
+		attribute: Final[str] = ""
+		hint: TypeAlias = Union[
+			str,
+			Literal[
+				"alias",
+				"all-scroll",
+				"auto",
+				"cell",
+				"col-resize",
+				"context-menu",
+				"copy",
+				"crosshair",
+				"default",
+				"e-resize",
+				"ew-resize",
+				"grab",
+				"grabbing",
+				"help",
+				"move",
+				"n-resize",
+				"ne-resize",
+				"nesw-resize",
+				"ns-resize",
+				"nw-resize",
+				"nwse-resize",
+				"no-drop",
+				"none",
+				"not-allowed",
+				"pointer",
+				"progress",
+				"row-resize",
+				"s-resize",
+				"se-resize",
+				"sw-resize",
+				"text",
+				"vertical-text",
+				"w-resize",
+				"wait",
+				"zoom-in",
+				"zoom-out",
+				"initial",
+				"inherit",
+			]
+		]

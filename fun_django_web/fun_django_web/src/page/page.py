@@ -10,6 +10,10 @@ from django.http import HttpResponse
 
 from yattag import Doc, SimpleDoc
 
+# TODO: Implement load PUGs
+# TODO: Implement if/elif/else in fun_django_web/src/reactivity/reactive.py
+# TODO: Resolve in SSR if/get values if they are solvable (backend only)
+# TODO: Implement that get/if/elif/else work in SSR if all values are solvable
 
 # TODO: Move to config
 logger = logging.getLogger(__name__)

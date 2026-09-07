@@ -2,7 +2,7 @@ from js import document
 
 
 class Reactive:
-	_reactive_attrs: list[str] = ['if_', 'get', 'set']
+	_reactive_attrs: list[str] = ['if_', 'elif_', 'else_', 'get', 'set']
 	_reactive_values: dict[str, dict[str, list[object]]]
 
 	def __init__(self) -> None:

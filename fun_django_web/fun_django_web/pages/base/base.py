@@ -48,7 +48,7 @@ def render(*args, **kwargs) -> Page:
 
 		page.stag("link", rel="stylesheet", href="{% static 'css/base.css' %}")
 
-		page.stag("script", type="module", src="{% static 'pyscript/core.js' %}")
+		page.stag("script", type="module", src="{% static 'pyscript/package/dist/core.js' %}")
 
 	with page.body:
 		with page.tag("div", klass="app-wrap"):

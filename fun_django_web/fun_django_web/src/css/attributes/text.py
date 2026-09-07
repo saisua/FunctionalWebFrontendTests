@@ -68,14 +68,66 @@ class text:
 				]
 			]
 
-	class line_separation(HintCSS):
-		attribute: Final[str] = "line-height"
-		hint: TypeAlias = Union[
-			str,
-			ScreenSizeCSS.hint,
-			Literal[
-				"normal",
-				"initial",
-				"inherit",
+		class weight(HintCSS):
+			attribute: Final[str] = "font-weight"
+			hint: TypeAlias = Union[
+				float,
+				Literal[
+					"normal",
+					"bold",
+					"bolder",
+					"lighter",
+					"number",
+					"initial",
+					"inherit"
+				]
 			]
+
+	class line:
+		class separation(HintCSS):
+			attribute: Final[str] = "line-height"
+			hint: TypeAlias = Union[
+				str,
+				ScreenSizeCSS.hint,
+				Literal[
+					"normal",
+					"initial",
+					"inherit",
+				]
+			]
+
+		class wrap(HintCSS):
+			attribute: Final[str] = "white-space"
+			hint: TypeAlias = Literal[
+				"normal",
+				"nowrap",
+				"pre",
+				"pre-line",
+				"pre-wrap",
+				"initial",
+				"inherit"
+			]
+
+	class decoration:
+		class line(HintCSS):
+			attribute: Final[str] = "text-decoration-line"
+			hint: TypeAlias = Literal[
+				"none",
+				"underline",
+				"overline",
+				"line-through",
+				"initial",
+				"inherit"
+			]
+
+		class color(HintCSS):
+			...
+
+	class select(HintCSS):
+		attribute: Final[str] = "user-select"
+		hint: TypeAlias = Literal[
+			"auto",
+			"none",
+			"text",
+			"all"
 		]
