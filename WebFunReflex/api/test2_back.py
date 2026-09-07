@@ -1,6 +1,5 @@
 import pickle as pkl
 import os
-import asyncio
 
 import aiofiles
 

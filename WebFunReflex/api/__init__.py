@@ -1,7 +1,9 @@
-from .test_back import router as test_back
+from .test2_back import router as test2_back
+from .test5_back import router as test5_back
 
 routers = [
-    test_back,
+    test2_back,
+    test5_back,
 ]
 
 __all__ = [

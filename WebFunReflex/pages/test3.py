@@ -1,9 +1,13 @@
-from typing import Any
 import os
 
 import reflex as rx
 
-from functional.statemachine import rxState, StateMachine
+from functional.statemachine import (
+	rxState,
+	StateMachine,
+	State,
+	OutsideState,
+)
 
 import statemachine as sm
 
@@ -12,12 +16,13 @@ MINIMUM = 0
 
 
 class StateMachine(StateMachine):
-	rx_state: rx.State = None
+	rx_state: rx.State | None = None
 
-	enabled: sm.State = sm.State(value=False)
-	disabled: sm.State = sm.State(initial=True, value=True)
-	_count: sm.State = sm.State()
-	_d_count: sm.State = sm.State()
+	enabled: State = State(value=True)
+	disabled: State = State(initial=True, value=False)
+	_count: State = State()
+	_d_count: State = State()
+	back: OutsideState = OutsideState("/")
 
 	_enable: sm.state.TransitionList = (
 		disabled.to(enabled)  # noqa: W503
@@ -26,6 +31,7 @@ class StateMachine(StateMachine):
 	_disable: sm.state.TransitionList = (
 		enabled.to(disabled)
 		| _count.to(disabled)  # noqa: W503
+		| back.to(disabled)  # noqa: W503
 	)
 	_increment: sm.state.TransitionList = (
 		_count.to.itself()
@@ -36,6 +42,10 @@ class StateMachine(StateMachine):
 	_decrement: sm.state.TransitionList = (
 		_count.to.itself()
 		| enabled.to(_count)  # noqa: W503
+	)
+	_back: sm.state.TransitionList = (
+		enabled.to(back)
+		| _count.to(back)  # noqa: W503
 	)
 
 	@_enable.on
@@ -68,6 +78,13 @@ class StateMachine(StateMachine):
 		if self.rx_state.enabled and self.rx_state.count % 3 == 0:
 			self._disable()
 
+	@_back.on
+	def on_back():
+		print("on_back")
+
+	def on_transition_not_allowed(self, e):
+		yield rx.toast(f"Forbidden action: {e.event.strip('_').capitalize()}")
+
 
 class Test3(rxState, rx.State):
 	count: int = 0
@@ -79,21 +96,21 @@ class Test3(rxState, rx.State):
 	async def reset_(self):
 		self.count = 0
 		self.d_count = 0
-		if self.enabled:
-			self._sm._disable()
+		self._sm = StateMachine()
 
 	@rx.event
 	def graph(self):
 		self._sm._graph().write_png(
 			os.path.join(
 				os.path.dirname(__file__),
-				"test3_graph.png"
+				f"{self.__class__.__name__}_{self._sm.__class__.__name__}_graph.png"
 			)
 		)
 
 	@rx.event
 	def on_load(self):
 		super().on_load()
+		# More stuff if needed
 
 	def __str__(self):
 		return f"Test3 {self.d_count=} {self.count=}"
@@ -103,6 +120,15 @@ class Test3(rxState, rx.State):
 def test3() -> rx.Component:
 	return rx.container(
 		rx.color_mode.button(position="top-right"),
+		rx.button(
+			rx.icon("arrow_left"),
+			on_click=Test3.back,
+			color_scheme="grass",
+			disabled=~Test3.enabled,
+			position="absolute",
+			left="2vw",
+			top="3vh",
+		),
 		rx.vstack(
 			rx.heading(
 				"Welcome to Test3!",

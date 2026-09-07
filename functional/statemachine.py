@@ -3,8 +3,86 @@ import weakref
 
 import reflex as rx
 
-from statemachine import StateMachine as SM, State
+from statemachine import (
+	StateMachine as SM,
+	State as SMState,
+)
+from statemachine.state import (
+	_ToState as _SMToState,
+	_FromState as _SMFromState,
+)
+from statemachine.exceptions import TransitionNotAllowed
 from statemachine.event import Event
+from statemachine.transition import Transition
+from statemachine.transition_list import TransitionList
+
+from .outside_state import OutsideState, OutsideTransitionList  # noqa: F401
+
+
+class _ToState(_SMToState):
+	def __call__(self, *states: SMState, **kwargs):
+		out_state = None
+		for state in states:
+			if isinstance(state, OutsideState):
+				out_state = state
+				break
+
+		if out_state is not None:
+			transitions = OutsideTransitionList(
+				(
+					Transition(self._state, state, **kwargs)
+					for state in states
+				),
+				target_url=out_state.target_url
+			)
+		else:
+			transitions = TransitionList(
+				Transition(self._state, state, **kwargs)
+				for state in states
+			)
+
+		self._state.transitions.add_transitions(transitions)
+		return transitions
+
+
+class _FromState(_SMFromState):
+	def __call__(self, *states: SMState, **kwargs):
+		out_state = None
+		for state in states:
+			if isinstance(state, OutsideState):
+				out_state = state
+				break
+
+		if out_state is not None:
+			transitions = OutsideTransitionList(
+				(
+					Transition(origin, self._state, **kwargs)
+					for origin in states
+				),
+				target_url=out_state.target_url
+			)
+		else:
+			transitions = TransitionList(
+				Transition(origin, self._state, **kwargs)
+				for origin in states
+			)
+
+		for origin in states:
+			transition = Transition(origin, self._state, **kwargs)
+			origin.transitions.add_transitions(transition)
+			transitions.add_transitions(transition)
+
+		return transitions
+
+
+class State(SMState):
+	@property
+	def to(self) -> _ToState:
+		return _ToState(self)
+
+	@property
+	def from_(self) -> _FromState:
+		return _FromState(self)
 
 
 class StateMachine(SM):
@@ -23,10 +101,17 @@ class StateMachine(SM):
 
 		return serialized
 
+	def send(self, event: str):
+		try:
+			return super().send(event)
+		except TransitionNotAllowed as e:
+			if hasattr(self, 'on_transition_not_allowed'):
+				return self.on_transition_not_allowed(e)
+			else:
+				raise e
+
 
 class rxState:
-	StateMachine: type[SM]
-
 	def __init_subclass__(cls):
 		initial_attrs = cls.__dict__.copy()
 		for k, v in initial_attrs.items():
@@ -39,7 +124,8 @@ class rxState:
 			if isinstance(attr, Event):
 				key = key.lstrip("_")
 
-				exec(f"def {key}(self) -> None: getattr(self.{sm_key}, '{attr}')(self)")
+				# exec(f"def {key}(self) -> None: getattr(self.{sm_key}, '{attr}')(self)")
+				exec(f"def {key}(self) -> None: return self.{sm_key}.send('{attr}')")
 				event_wrapper = locals()[key]
 
 				setattr(
@@ -69,7 +155,7 @@ class rxState:
 	def on_load(self):
 		for k, v in self.__dict__.items():
 			if isinstance(v, SM):
-				v.rx_state = self
+				v.__class__.rx_state = self
 
 
 @rx.serializer
