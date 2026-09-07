@@ -1,1 +1,0 @@
-Here it would be implemented all static assets

@@ -1,5 +1,0 @@
-packages = [
-	"python-statemachine",
-]
-
-debug = true
