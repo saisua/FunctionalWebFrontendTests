@@ -1,1 +1,1 @@
-.venv/bin/python -m reflex run
+.venv/bin/python main.py
