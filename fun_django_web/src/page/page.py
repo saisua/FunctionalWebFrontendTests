@@ -187,9 +187,10 @@ class Page:
 		id: str | None = None,
 		unique_tag: bool = False,
 		**kwargs
-	):
+	) -> None:
 		if id is not None:
 			setattr(self, id, tag)
+			setattr(tag, 'id', f"'#{id}'")
 		elif unique_tag:
 			if tag_name is None:
 				tag_name = args[0]
@@ -220,14 +221,19 @@ class Page:
 	def children(self) -> list[Page._LazyTag]:
 		return [self.html]
 
+	def add_packages(self, *packages: str) -> None:
+		self.pyscript_config['packages'].extend(packages)
+
 	class _LazyTag:
 		page: Page
+
+		id: str | None = None
 
 		_args: tuple | list
 		_kwargs: dict
 
 		children: list[Callable[[None], None] | Page._LazyTag]
-		_prev_tag: Page._LazyTag
+		_prev_tag: Page._LazyTag | None = None
 
 		def __init__(self, page: Page, *args, **kwargs):
 			self.page = page
@@ -235,8 +241,7 @@ class Page:
 			self._args = args
 			self._kwargs = kwargs
 
-			self._prev_tag = None
-
+			self.id = kwargs.get('id', None)
 			self.children = kwargs.get("children", list())
 
 		def __enter__(self, *args, **kwargs):
