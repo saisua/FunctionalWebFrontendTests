@@ -123,21 +123,39 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
-if not DEBUG:
-    STATIC_DIR = BASE_DIR / "static"
-    STATIC_ROOT = BASE_DIR / "static_collected"
-else:
-    STATIC_DIR = BASE_DIR / "static_collected"
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / "fun_django_web" / "static_collected"
+STATIC_ROOT.mkdir(parents=True, exist_ok=True)
 
-STATICFILES_DIRS = [
-    BASE_DIR / "fun_django_web" / "src" / "state_machine",
-    BASE_DIR / "fun_django_web" / "src" / "requests",
-    BASE_DIR / "fun_django_web" / "src" / "workflows",
-    BASE_DIR / "fun_django_web" / "src" / "notifications",
-    BASE_DIR / "fun_django_web" / "src" / "reactivity",
-	STATIC_DIR,
-]
+static_gitignore = STATIC_ROOT / ".gitignore"
+if not static_gitignore.exists():
+    static_gitignore.write_text('*')
+
+(BASE_DIR / "fun_django_web" / "generated").mkdir(exist_ok=True)
+
+STATICFILES_DIRS = list(dict(
+    state_machine=BASE_DIR / "fun_django_web" / "src" / "state_machine",
+    requests=BASE_DIR / "fun_django_web" / "src" / "requests",
+    workflows=BASE_DIR / "fun_django_web" / "src" / "workflows",
+    notifications=BASE_DIR / "fun_django_web" / "src" / "notifications",
+    reactivity=BASE_DIR / "fun_django_web" / "src" / "reactivity",
+    declarative=BASE_DIR / "fun_django_web" / "src" / "declarative",
+	generated_pages=BASE_DIR / "fun_django_web" / "generated",
+    utils=BASE_DIR / "utils",
+	libs=BASE_DIR / "libs",
+).items())
+
+
+for folder_name, _ in STATICFILES_DIRS:
+	Path(STATIC_ROOT, folder_name).mkdir(parents=True, exist_ok=True)
+
+
+STORAGES = {
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
