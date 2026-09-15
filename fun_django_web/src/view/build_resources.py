@@ -2,11 +2,15 @@ from pathlib import Path
 from itertools import chain, repeat
 import inspect
 import ast
+import re
 from textwrap import dedent
-from dataclasses import  dataclass, field
+from dataclasses import dataclass, field
 
 from fun_django_web.src.page.page import Page
 from fun_django_web.src.state_machine.state_machine import StateMachine
+
+
+_page_re = re.compile(r"(\W|^)(_page.\w+(\.\w+)*)")
 
 
 @dataclass
@@ -101,32 +105,58 @@ def gen_build_resources(
 		'\t\tbase.__init__(self, *args, **kwargs)'
 	])
 
+	glob = globals()
+	loc = locals()
+
 	front_var_definitions: list[str] = list()
 	source = inspect.getsource(cls.__base__)
 	tree = ast.parse(source)
 	for node in tree.body[0].body:
 		attr_name = None
+		segment = None
 
-		if isinstance(node, ast.AnnAssign):
+		if isinstance(node, ast.ClassDef):
+			attr_name = node.name
+
+		elif isinstance(node, ast.AnnAssign):
 			if isinstance(node.target, ast.Name):
 				attr_name = node.target.id
+
 		elif isinstance(node, ast.Assign):
 			for target in node.targets:
 				if isinstance(target, ast.Name):
 					attr_name = target.id
+					break
+
+		elif (
+			isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and 
+			not inspect.isfunction(getattr(cls, node.name))
+		):
+			front_functions.append(ast.unparse(node))
+			continue
+
+		elif isinstance(node, ast.Expr) and hasattr(node, "value"):
+			segment = ast.get_source_segment(source, node.value)
+
 		else:
 			continue
 
-		if attr_name:
-			if attr_name.startswith('_'):
-				continue
-
+		if attr_name and not attr_name.startswith("_"):
 			segment = ast.get_source_segment(source, node)
-			if segment:
-				front_var_definitions.append(segment)
 
-	for attr in StateMachine.__annotations__.keys():
-		pass
+		if segment:
+			try:
+				segment = _page_re.sub(
+					lambda m: m.group(1) + eval(f"cls.{m.group(2)}", glob, loc),
+					segment
+				)
+			except TypeError:
+				raise NameError("Wrong usage of _page")
+
+			front_var_definitions.append(segment)
+
+	# for attr in StateMachine.__annotations__.keys():
+	# 	pass
 
 	if front_var_definitions:
 		front_var_definitions_src = '\n\t' + '\n\t'.join(front_var_definitions)
@@ -150,11 +180,27 @@ def gen_build_resources(
 				fn_line
 				for fn_line in chain(*(
 					dedent(
+						front_fn
+						if isinstance(front_fn, str)
+						else
 						inspect.getsource(
-							getattr(cls, front_fn_name)
+							front_fn
 						).replace(cls.__base__.__name__, front_class_name)
 					).split('\n')
-					for front_fn_name in front_functions
+					for front_fn in (
+						getattr(cls, front_fn_name, front_fn_name)
+						for front_fn_name in front_functions
+					)
+					if (
+						front_fn is not None
+						and (
+							inspect.isfunction(front_fn)
+							or inspect.ismethod(front_fn)
+							or inspect.isclass(front_fn)
+							or inspect.isbuiltin(front_fn)
+							or isinstance(front_fn, str)
+						)
+					)
 				))
 				if fn_line.strip()
 			)
@@ -177,7 +223,7 @@ def gen_build_resources(
 			front_var_definitions_src +
 			front_back_functions_src +
 			front_functions_src +
-			'\nview = PageView()' +
+			'\nview = PageView()\nprint("view initialized")' +
 			front_startup_code
 		)
 		reference.front_view_class = front_view_path
