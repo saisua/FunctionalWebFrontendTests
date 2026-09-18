@@ -1,175 +1,274 @@
-from typing import Callable
+from __future__ import annotations
+from typing import Callable, Any, Awaitable, Iterable
+from collections import deque
 import asyncio
-from dataclasses import dataclass
-import re
-import base64
-import pickle as pkl
-
-from dagio import depends  # noqa: F401
-
-import aiofiles
-import aiohttp
-
-try:
-	from pyscript import document
-except ImportError:
-	document = None
+import inspect
 
 
-def fetch(url: str, *, fail: str):
-	def _fetch_wrapper(fn: Callable):
-		async def _fetch_fn(self, *args, **kwargs):
-			data = None
-
-			try:
-				async with aiohttp.ClientSession() as session:
-					async with session.get(url) as response:
-						data = await response.text()
-
-				await fn(self, data, *args, **kwargs)
-			except Exception:
-				task_name = f"{fn.__name__}_fail_handling"
-				async with self.__task_list_lock:
-					self.__task_list[task_name] = asyncio.create_task(
-						getattr(self, fail)(self, data)
-					)
-		return _fetch_fn
-	return _fetch_wrapper
+type callable_t = Callable[..., Any] | Callable[..., Awaitable[Any]]
+type task_t = callable_t | Workflow
 
 
-def send(method: str, url: str, *, fail: str):
-	def _send_wrapper(fn: Callable):
-		async def _send_fn(self, *args, **kwargs):
-			data = None
+class Workflow:
+	tasks: set[callable_t]
 
-			try:
-				# Obtener datos de la función decorada
-				send_data = await fn(self, *args, **kwargs)
+	parents: set[Workflow]
+	children: set[Workflow]
 
-				async with aiohttp.ClientSession() as session:
-					# Seleccionar método HTTP
-					if method.upper() == "POST":
-						async with session.post(url, data=send_data) as response:
-							data = await response.text()
-					elif method.upper() == "PUT":
-						async with session.put(url, data=send_data) as response:
-							data = await response.text()
-					elif method.upper() == "DELETE":
-						async with session.delete(url, data=send_data) as response:
-							data = await response.text()
-					else:
-						raise ValueError(f"Método HTTP no soportado: {method}")
+	_fallback_fn: Workflow | WorkflowGroup | None = None
+	_raise: bool = False
 
-				return data
-			except Exception as e:
-				task_name = f"{fn.__name__}_fail_handling"
-				async with self.__task_list_lock:
-					self.__task_list[task_name] = asyncio.create_task(
-						getattr(self, fail)(self, e)
-					)
-		return _send_fn
-	return _send_wrapper
+	def __init__(
+		self,
+		*tasks: callable_t,
+		parents: Iterable[task_t] = tuple(),
+		fallback: callable_t | None = None,
+		raise_exception: bool = False
+	) -> None:
+		self.children = set()
 
+		self.tasks = set()
+		if len(tasks):
+			self.add_tasks(*tasks)
 
-@dataclass
-class PureSelf:
-	__OBJ: type
+		self.parents = set()
+		if len(parents):
+			self.add_parents(*parents)
 
-	def __getattr__(self, att: str):
-		if att == "__OBJ":
-			return self.__getattribute__(att)
-		else:
-			return getattr(self.__OBJ, att)
+		if fallback is not None:
+			self.fallback = fallback
+		self._raise = raise_exception
 
-	def __setattr__(self, att: str, value):
-		if att != "_PureSelf__OBJ":
-			raise ValueError(
-				f"Attribute {att} can't be set to {value!r} in a pure function"
+	def __hash__(self) -> int:
+		if len(self.tasks):
+			return hash(tuple(id(fn) for fn in self.tasks))
+		return id(self)
+
+	def __eq__(self, value: object) -> bool:
+		return hash(self) == hash(value)
+
+	def add_tasks(self, *tasks):
+		for task in tasks:
+			if isinstance(task, (Workflow, WorkflowGroup)):
+				self.tasks.update(task.tasks)
+			else:
+				self.tasks.add(task)
+
+	def add_parents(self, *parents):
+		for parent in parents:
+			if isinstance(parent, WorkflowGroup):
+				self.parents.update(parent.workflows)
+				continue
+			if not isinstance(parent, Workflow):
+				parent = Workflow(parent)
+			self.parents.add(parent)
+			parent.children.add(self)
+
+	@property
+	def fallback(self) -> Workflow | WorkflowGroup | None:
+		return self._fallback_fn
+
+	@fallback.setter
+	def fallback(self, fallback_fn: task_t):
+		if not isinstance(fallback_fn, (Workflow, WorkflowGroup)):
+			fallback_fn = Workflow(fallback_fn)
+		self._fallback_fn = fallback_fn
+
+	def then(
+		self,
+		*funcs: task_t
+	) -> WorkflowGrup:
+		children = list()
+		for func in funcs:
+			if isinstance(func, Workflow):
+				child = func
+			else:
+				child = Workflow(func)
+
+			self.children.add(child)
+			child.parents.add(self)
+			children.append(child)
+		return WorkflowGroup(children)
+
+	add_children = then
+
+	def _collect_component(self) -> set[Workflow]:
+		tasks: set[Workflow] = set()
+		queue = deque[Workflow]([self])
+
+		while queue:
+			task = queue.popleft()
+
+			if task in tasks:
+				continue
+
+			tasks.add(task)
+			queue.extend(task.parents)
+			queue.extend(task.children)
+
+		return tasks
+
+	def __repr__(self) -> str:
+		task_names = [
+			getattr(task, "__name__", repr(task))
+			for task in self.tasks
+		]
+		return f"Task({', '.join(task_names)})"
+
+	@staticmethod
+	async def _invoke(task: Workflow, arguments: Iterable[Any]) -> list[Any]:
+		aw_results = list()
+		for call in task.tasks:
+			if inspect.iscoroutinefunction(call):
+				aw_results.append(call(*arguments))
+			else:
+				aw_results.append(asyncio.to_thread(call, *arguments))
+
+		th_aw_results = list()
+		results = list()
+		for result in await asyncio.gather(*aw_results):
+			if inspect.isawaitable(result):
+				th_aw_results.append(result)
+			else:
+				results.append(result)
+
+		return results + await asyncio.gather(*th_aw_results)
+
+	def __call__(
+		self,
+		*args,  # TODO
+	) -> Awaitable[dict[Workflow, Any]]:
+		return self._run_tasks(self._collect_component(), *args)
+
+	@staticmethod
+	async def _run_tasks(tasks: set[Workflow], *args) -> dict[Workflow, Any]:
+		remaining_dependencies = {
+			task: sum(
+				parent in tasks
+				for parent in task.parents
 			)
-		else:
-			object.__setattr__(self, att, value)
+			for task in tasks
+		}
 
+		results: dict[Workflow, Any] = {}
+		running: dict[asyncio.Task[list[Any]], Workflow] = {}
 
-def pure(fn: Callable):
-	async def _pure_wrapper(self, *args, **kwargs):
-		return await fn(PureSelf(self), *args, **kwargs)
-	return _pure_wrapper
+		ready = deque(
+			task for task in tasks
+			if remaining_dependencies[task] == 0
+		)
 
+		while ready or running:
+			while ready:
+				task = ready.popleft()
 
-# document.cookies
-cookies = ""
-
-
-def write_cookie(name: str):
-	cookie_re = re.compile(f"(^|;){name}=.*?($|;)")
-
-	def _wr_cookie(fn: Callable):
-		async def _write_cookie_wrapper(self, *args, **kwargs):
-			global cookies
-
-			data = await fn(self, *args, **kwargs)
-
-			if not isinstance(data, str):
-				data = base64.b64encode(
-					pkl.dumps(
-						data
-					)
+				arguments = args + tuple(
+					results[parent]
+					for parent in task.parents
+					if parent in tasks
 				)
-			rdata = fr"\g<1>{name}={data}\g<2>"
 
-			cookies, found = cookie_re.subn(rdata, cookies, count=1)
-			if not found:
-				cookies += f"{name}={data};"
+				future = asyncio.create_task(Workflow._invoke(task, arguments))
+				running[future] = task
 
-		return _write_cookie_wrapper
-	return _wr_cookie
-
-
-def read_cookie(name: str):
-	cookie_re = re.compile(fr"(?:^|;){name}=(.*?)(?:$|;)")
-
-	def _r_cookie(fn: Callable):
-		async def _read_cookie_wrapper(self, *args, **kwargs):
-			global cookies
-
-			data = cookie_re.search(cookies)
-
-			if data is None:
-				return
-
-			await fn(self, data.group(1), *args, **kwargs)
-		return _read_cookie_wrapper
-	return _r_cookie
-
-
-def store(file: str):
-	def _store(fn: Callable):
-		async def _store_wrapper(self, *args, **kwargs):
-			result_bin = pkl.dumps(
-				await fn(self, *args, **kwargs)
-			)
-
-			async with aiofiles.open(file, "wb+") as f:
-				await f.write(result_bin)
-		return _store_wrapper
-	return _store
-
-
-def load(file: str, *, fail: str, deserialize: bool = False):
-	def _load(fn: Callable):
-		async def _load_wrapper(self, *args, **kwargs):
-			data_bin = None
+			if not running:
+				raise RuntimeError("The task graph contains a cycle")
 
 			try:
-				async with aiofiles.open(file, "rb") as f:
-					data_bin = await f.read()
+				completed, _ = await asyncio.wait(
+					running,
+					return_when=asyncio.FIRST_COMPLETED,
+				)
 
-				await fn(self, pkl.loads(data_bin), *args, **kwargs)
-			except Exception:
-				task_name = f"{fn.__name__}_fail_handling"
-				async with self.__task_list_lock:
-					self.__task_list[task_name] = asyncio.create_task(
-						getattr(self, fail)(self, data_bin)
-					)
-		return _load_wrapper
-	return _load
+				for future in completed:
+					task = running.pop(future)
+					result = future.result()
+					if len(task.tasks) == 1:
+						result = result[0]
+					results[task] = result
+
+					for child in task.children:
+						if child not in tasks:
+							continue
+
+						remaining_dependencies[child] -= 1
+
+						if remaining_dependencies[child] == 0:
+							ready.append(child)
+			except Exception as err:
+				do_raise: bool = False
+				for future, task in running.items():
+					if task._fallback_fn is not None:
+						task._fallback_fn(err)
+					do_raise |= task._raise
+
+				if do_raise:
+					raise
+
+		return results
+
+
+class WorkflowGroup:
+	group: set[Workflow | WorkflowGroup]
+
+	def __init__(
+		self,
+		workflows: list[Workflow | WorkflowGroup] | set[Workflow | WorkflowGroup] | None = None
+	) -> None:
+		if workflows is None:
+			workflows = set()
+		self.group = set(workflows)
+
+	def __hash__(self) -> int:
+		return id(self)
+
+	def __eq__(self, value: object) -> bool:
+		return self is value
+
+	def then(self, *tasks: task_t | WorkflowGroup) -> WorkflowGroup:
+		then_tasks = set()
+		for task in tasks:
+			if isinstance(task, WorkflowGroup):
+				then_tasks.update(task.group)
+			else:
+				then_tasks.add(task)
+
+		new_workflows = list()
+		for workflow in self.group:
+			new_workflows.append(workflow.then(*then_tasks))
+		return WorkflowGroup(new_workflows)
+
+	def _collect_component(self) -> set[Workflow]:
+		tasks = set()
+		for workflow in self.group:
+			tasks.update(workflow._collect_component())
+
+		return tasks
+
+	@property
+	def tasks(self):
+		for workflow in self.group:
+			yield from workflow.tasks
+
+	@property
+	def workflows(self):
+		for workflow in self.group:
+			if isinstance(workflow, Workflow):
+				yield workflow
+			else:
+				yield from workflow.workflows
+
+	@property
+	def fallback(self):
+		fallbacks = set()
+		for workflow in self.group:
+			if workflow.fallback is not None:
+				fallbacks.add(workflow.fallback)
+				if len(fallbacks) > 1:
+					raise RuntimeError("More than one fallback for a WorkflowGroup")
+		if len(fallbacks) == 1:
+			return fallbacks.pop()
+		return None
+
+	def __call__(self, *args) -> Any:
+		return Workflow._run_tasks(self._collect_component(), *args)
