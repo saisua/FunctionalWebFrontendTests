@@ -1,4 +1,4 @@
-from typing import Any, Optional, Annotated, TypeVar
+from typing import Optional, Annotated, TypeVar
 from pathlib import Path
 from dataclasses import dataclass, field
 from textwrap import dedent
@@ -11,7 +11,7 @@ type_t = TypeVar('type_t')
 @dataclass(slots=True)
 class Doc:
 	docstring: Optional[str] = field(default=None)
-	file: Optional[Path] = field(default=None)
+	file: Optional[Path | str] = field(default=None)
 
 	def __post_init__(self):
 		if self.docstring is None and self.file is None:
