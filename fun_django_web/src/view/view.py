@@ -1,7 +1,7 @@
 import inspect
-from typing import Any
+from typing import Any, Callable
 from pathlib import Path
-from abc import ABC, abstractmethod
+from abc import ABC, ABCMeta, abstractmethod
 
 from django.urls import path, URLPattern
 from django.conf import settings
@@ -22,8 +22,17 @@ from utils.docstr import Doc
 BASE_DIR = Path(settings.BASE_DIR)
 
 
+def backend(fn: Callable):
+	fn.__backend__ = True
+	return fn
+
+
+class BaseViewMeta(ABCMeta, StateMachine.__class__):
+	pass
+
+
 @Doc("Base View class for new web page views")
-class View(ABC, StateMachine):
+class BaseView(ABC, StateMachine, metaclass=BaseViewMeta):
 	_skip_subclass_init: bool = False
 	_endpoint: Path
 
@@ -40,7 +49,7 @@ class View(ABC, StateMachine):
 
 	@ensure_csrf_cookie
 	def base_endpoint(request) -> HttpResponse:
-		cls = View._endpoint_refs.get(request.path.strip(' /'))
+		cls = BaseView._endpoint_refs.get(request.path.strip(' /'))
 
 		if cls is not None:
 			if cls._cached_index_content is None:
@@ -55,7 +64,7 @@ class View(ABC, StateMachine):
 				print("Reused cache for", cls._endpoint)
 
 			return HttpResponse(cls._cached_index_content)
-		raise RuntimeError(f"No cls for {request.path} in {View._endpoint_refs}")
+		raise RuntimeError(f"No cls for {request.path} in {BaseView._endpoint_refs}")
 
 	@classmethod
 	def __init_subclass__(cls):
@@ -202,10 +211,7 @@ class View(ABC, StateMachine):
 				cls,
 				predicate=inspect.isroutine
 			):
-				if (
-					not name.startswith('_') or
-					name.startswith('__')
-				):
+				if not getattr(back_fn, '__backend__', False):
 					continue
 				name = name[1:]
 
@@ -242,7 +248,7 @@ class View(ABC, StateMachine):
 			):
 				if name.startswith('_'):
 					continue
-				if hasattr(View, name) and front_fn == getattr(cls, name):
+				if hasattr(BaseView, name) and front_fn == getattr(cls, name):
 					continue
 
 				setattr(
@@ -279,7 +285,7 @@ class View(ABC, StateMachine):
 			)
 		)
 
-		cls.get_urls = View.get_urls
+		cls.get_urls = BaseView.get_urls
 
 	@classmethod
 	def get_urls(cls):

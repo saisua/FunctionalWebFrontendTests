@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from fun_django_web.src.view import View
+from fun_django_web.src.view import BaseView
 from fun_django_web.src.state_machine.state_machine import State, Transition
 
 from fun_django_web.src.notifications.notifications import show_notification
@@ -12,7 +12,7 @@ from fun_django_web.src.css.components.notification import NotificationCSS
 from fun_django_web.src.css.components.button import ButtonCSS
 
 
-class view(View):
+class view(BaseView):
 	_endpoint = Path("test3")
 	_page = build_page()
 	_stylesheets = [

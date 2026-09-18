@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from fun_django_web.src.view import View
+from fun_django_web.src.view import BaseView
 from fun_django_web.src.state_machine.state_machine import State, Transition
 
 from fun_django_web.src.notifications.notifications import show_notification
@@ -20,7 +20,7 @@ from utils.docstr import Doc
 
 
 @Doc("Test4 page view that tries to include the logical programming paradigm")
-class view(View):
+class view(BaseView):
 	_endpoint = Path("test4")
 	_page = build_page()
 	_stylesheets = [
@@ -69,31 +69,31 @@ class view(View):
 
 	increment_event = Callback.click(_page.increment_btn.id)
 	decrement_event = Callback.click(_page.decrement_btn.id)
-	disable_event = Callback.click(_page.disable_btn.id) >> disable
-	enable_event = Callback.click(_page.enable_btn.id) >> enable
-	reset_event = Callback.click(_page.reset_btn.id) >> reset 
-	save_event = Callback.click(_page.save_btn.id) >> get_time_request
+	disable_event = Callback.click(_page.disable_btn.id).do(disable)
+	enable_event = Callback.click(_page.enable_btn.id).do(enable)
+	reset_event = Callback.click(_page.reset_btn.id).do(reset)
+	save_event = Callback.click(_page.save_btn.id).do(get_time_request)
 
-	Callback.click(_page.leave_btn.id) >> leave
+	Callback.click(_page.leave_btn.id).do(leave)
 
 	last_saved_time: str @ Doc("The datetime when it was last saved") = "Never"
 
 	saving.after(enable)
 
 	@Doc("Increment the enabled counter by 1")
-	@increment_event << enabled.is_current()
+	@increment_event.when(enabled.is_current())
 	async def increment(self, _):
 		self.Counter.enabled += 1
 		print(f"Increment: {self.Counter.enabled}")
 
 	@Doc("Increment the disabled counter by 1")
-	@increment_event << disabled.is_current()
+	@increment_event.when(disabled.is_current())
 	async def dincrement(self, _):
 		self.Counter.disabled += 1
 		print(f"Disabled increment: {self.Counter.disabled}")
 
 	@Doc("Decrement the disabled counter by 1")
-	@decrement_event << enabled.is_current()
+	@decrement_event.when(enabled.is_current())
 	async def decrement(self, _):
 		self.Counter.enabled -= 1
 		print(f"Decrement: {self.Counter.enabled}")
