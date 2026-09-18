@@ -1,1 +1,1 @@
-from .view import View  # noqa: F401
+from .view import BaseView, backend  # noqa: F401
