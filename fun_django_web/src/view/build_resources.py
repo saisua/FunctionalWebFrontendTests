@@ -98,12 +98,19 @@ def gen_build_resources(
 		reference.back_methods = back_methods_path
 
 	front_class_name = "PageView"
-	front_class_def = '\n\t'.join([
-		f'class {front_class_name}(StateMachine, Reactive):',
-		'def __init__(self, *args, **kwargs):',
-		'\tfor base in type(self).__bases__:',
-		'\t\tbase.__init__(self, *args, **kwargs)'
-	])
+	front_class_def = '\n'.join((
+		'\n\t'.join([
+			'class BaseViewMeta:',
+			'def __getattr__(self, name: str): return name'
+		]),
+		"BaseView = BaseViewMeta()",
+		'\n\t'.join([
+			f'class {front_class_name}(StateMachine, Reactive):',
+			'def __init__(self, *args, **kwargs):',
+			'\tfor base in type(self).__bases__:',
+			'\t\tbase.__init__(self, *args, **kwargs)'
+		])
+	))
 
 	glob = globals()
 	loc = locals()
