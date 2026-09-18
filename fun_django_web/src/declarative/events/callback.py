@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Callable, Iterable, ParamSpec, Awaitable
+from typing import Callable, Iterable, ParamSpec, Awaitable, cast
 from functools import partial
 from asyncio import TaskGroup
 from copy import copy
@@ -11,6 +11,8 @@ try:
 
 	from fun_django_web.src.notifications.notifications import show_notification
 
+	from fun_django_web.src.workflows.workflows import Workflow, WorkflowGroup
+
 	from utils.classproperty import classproperty
 except ImportError:
 	pass
@@ -19,7 +21,7 @@ except ImportError:
 P = ParamSpec('P')
 
 
-class Callback:
+class Callback(Workflow):
 	_nfunc: int = 0
 	_fname: str | None = None
 
@@ -30,7 +32,7 @@ class Callback:
 
 	effects: dict[int, tuple[
 		list[Callable[[object, object], bool]],
-		list[Callable[[object, object], Awaitable] | Transition]
+		list[Workflow | WorkflowGroup | Transition | str]
 	]]
 
 	_set_manager: bool = False
@@ -51,13 +53,15 @@ class Callback:
 
 		self.selector = selector
 
+		super().__init__()
+
 	def _update_fname(self) -> None:
 		self.fname = f'_fn_{self.event or self.__class__.__name__}{self._nfunc}'
 		self.__class__._nfunc += 1
 
 	@classproperty
-	def click(cls):
-		return partial(cls, event='click')
+	def click(cls) -> Callable[..., Callback]:
+		return cast(Callable, partial(cls, event='click'))
 
 	@property
 	def selector(self) -> str | None:
@@ -100,9 +104,9 @@ class Callback:
 		self._fname = new_fname
 
 	def set_manager(self):
-		print(f"Set manager for {self._fname} {self._condition_id}")
-		print(self._selector_conditions)
-		print(self.effects)
+		# print(f"Set manager for {self._fname} {self._condition_id}")
+		# print(self._selector_conditions)
+		# print(self.effects)
 		try:
 			setattr(
 				PageView,
@@ -138,7 +142,7 @@ class Callback:
 		for cond_group in self._selector_conditions[self.selector]:
 			conditions, actors = self.effects.get(cond_group, (None, None))
 
-			if conditions is None or not len(actors):
+			if conditions is None or actors is None or not len(actors):
 				continue
 
 			# print(cond_group, conditions, actors)
@@ -156,10 +160,17 @@ class Callback:
 
 			async with TaskGroup() as tg:
 				for actor in actors:
+					if isinstance(actor, str):
+						if self.owner is not None:
+							actor = getattr(self.owner, actor)
+							if isinstance(actor, str):  # No actor found
+								print(f"Get actor from", self.owner, actor, self.owner._current_state, id(self.owner))
+								actor = getattr(self.owner._current_state, actor)
 					if isinstance(actor, Transition):
 						tg.create_task(actor(view))
 					else:
 						tg.create_task(actor(view, event))
+				tg.create_task(super().__call__())
 
 		if not resolved_event:
 			show_notification(f"No conditions met for event {event}")
@@ -187,10 +198,9 @@ class Callback:
 		self_copy._add_condition(cond)
 		return self_copy
 
-	def add_actor(self, actor: str | Callable):
-		if isinstance(actor, str):
-			actor = getattr(self.owner, actor)
-		assert isinstance(actor, Callable)
+	def add_actor(self, actor: str | Callable | Workflow | WorkflowGroup):
+		if not isinstance(actor, (str, Workflow, WorkflowGroup)):
+			actor = Workflow(actor)
 
 		actors = self.effects[self._condition_id][1]
 		actors.append(actor)
@@ -199,22 +209,19 @@ class Callback:
 
 		return self
 
-	def __lshift__(self, cond: str | Callable | Iterable[str | Callable]):
+	def __lshift__(self, *cond: str | Callable):
 		self_copy = self._update_condition_id()
-		if isinstance(cond, Iterable):
-			for c in cond:
-				self_copy._add_condition(c)
-		else:
-			self_copy._add_condition(cond)
+		for c in cond:
+			self_copy._add_condition(c)
 		return self_copy
 
-	def __rshift__(self, actor: str | Callable | Iterable[str | Callable]):
-		if isinstance(actor, Iterable):
-			for a in actor:
-				self.add_actor(a)
-		else:
-			self.add_actor(actor)
+	def __rshift__(self, *actor: str | Callable):
+		for a in actor:
+			self.add_actor(a)
 		return self
+
+	when = __lshift__
+	do = __rshift__
 
 	def __call__(self, fn: Callable) -> Callable:
 		self.add_actor(fn)

@@ -3,6 +3,8 @@ import inspect
 
 try:
 	from fun_django_web.src.notifications.notifications import show_notification
+
+	from fun_django_web.src.workflows.workflows import Workflow, WorkflowGroup
 except ImportError:
 	pass
 
@@ -13,10 +15,10 @@ type State_t = 'StateMachine.State'
 class Transition:
 	states: dict[State_t, tuple[State_t, str]]
 
-	_before_fn: Callable | None = None
-	_on_fn: Callable | None = None
-	_after_fn: Callable | None = None
-	_fallback_fn: Callable | None = None
+	_before_fn: Workflow | None = None
+	_on_fn: Workflow | None = None
+	_after_fn: Workflow | None = None
+	_fallback_fn: Workflow | None = None
 
 	_raise: bool
 
@@ -25,10 +27,12 @@ class Transition:
 		from_: State_t,
 		to: State_t,
 		transition_type: str,
+		fallback: Callable | None = None,
 		*,
 		raise_exception: bool = False
 	) -> None:
 		self.states = {from_: (to, transition_type)}
+		self._fallback_fn = fallback
 		self._raise = raise_exception
 
 	def _add_transition(self, from_: State_t, to: State_t, transition_type: str) -> None:
@@ -66,6 +70,29 @@ class Transition:
 				print(f"Exception before transition from {curr_state} to {next_state}: {e}")
 				return
 
+		valid_next_state: bool = next_state is not None and not isinstance(next_state, str)
+		if valid_next_state:
+			ns_before_fn = next_state._before_fn.get(next_state)
+
+			if ns_before_fn is not None:
+				try:
+					if inspect.iscoroutine(
+						coro := ns_before_fn(
+							state_machine,
+							curr_state,
+							next_state,
+							transition_type,
+						)
+					):
+						await coro
+				except Exception as e:
+					if self._fallback_fn is not None:
+						return self._fallback_fn(e)
+					if self._raise:
+						raise
+					print(f"Exception before transition from {curr_state} to {next_state}: {e}")
+					return
+
 		if next_state is None:
 			if hasattr(state_machine, '_on_invalid_transition'):
 				state_machine._on_invalid_transition(self, curr_state, transition_type)
@@ -76,33 +103,14 @@ class Transition:
 					return self._fallback_fn(RuntimeError(f'Invalid transition from {curr_state}'))
 				if self._raise:
 					raise RuntimeError(f"Invalid transition from {curr_state} ({state_machine})")
-				return
+			return
 
-		valid_next_state: bool = next_state is not None and not isinstance(next_state, str)
-		if valid_next_state and next_state._before_fn is not None:
-			try:
-				if inspect.iscoroutine(
-					coro := next_state._before_fn(
-						state_machine,
-						curr_state,
-						next_state,
-						transition_type,
-					)
-				):
-					await coro
-			except Exception as e:
-				if self._fallback_fn is not None:
-					return self._fallback_fn(e)
-				if self._raise:
-					raise
-				print(f"Exception before transition from {curr_state} to {next_state}: {e}")
-				return
-
+		# TODO: Fix this BS
+		type(state_machine)._current_state = next_state
 		state_machine._current_state = next_state
 
-		print(f"{curr_state} -> {next_state}")
+		print(f"{curr_state} -> {next_state} ({state_machine._current_state}, {id(state_machine)})")
 
-		print(self._on_fn)
 		if self._on_fn is not None:
 			try:
 				if inspect.iscoroutine(
@@ -117,19 +125,22 @@ class Transition:
 				print(f"Exception on transition from {curr_state} to {next_state}: {e}")
 				return
 
-		if valid_next_state and next_state._on_fn is not None:
-			try:
-				if inspect.iscoroutine(
-					coro := next_state._on_fn(state_machine, curr_state, next_state, transition_type)
-				):
-					await coro
-			except Exception as e:
-				if self._fallback_fn is not None:
-					return self._fallback_fn(e)
-				if self._raise:
-					raise
-				print(f"Exception on transition from {curr_state} to {next_state}: {e}")
-				return
+		if valid_next_state:
+			ns_on_fn = next_state._on_fn.get(next_state)
+
+			if ns_on_fn is not None:
+				try:
+					if inspect.iscoroutine(
+						coro := ns_on_fn(state_machine, curr_state, next_state, transition_type)
+					):
+						await coro
+				except Exception as e:
+					if self._fallback_fn is not None:
+						return self._fallback_fn(e)
+					if self._raise:
+						raise
+					print(f"Exception on transition from {curr_state} to {next_state}: {e}")
+					return
 
 		if transition_type == 'outside':
 			try:
@@ -157,37 +168,56 @@ class Transition:
 				print(f"Exception after transition from {curr_state} to {next_state}: {e}")
 				return
 
-		if valid_next_state and next_state._after_fn is not None:
-			try:
-				if inspect.iscoroutine(
-					coro := next_state._after_fn(
-						state_machine,
-						curr_state,
-						next_state,
-						transition_type
-					)
-				):
-					await coro
-			except Exception as e:
-				if self._fallback_fn:
-					self._fallback_fn(e)
-				if self._raise:
-					raise
-				print(f"Exception after transition from {curr_state} to {next_state}: {e}")
-				return
+		if valid_next_state:
+			ns_after_fn = next_state._after_fn.get(next_state)
 
-	def before(self, fn: Callable):
+			if ns_after_fn is not None:
+				try:
+					if inspect.iscoroutine(
+						coro := ns_after_fn(
+							state_machine,
+							curr_state,
+							next_state,
+							transition_type
+						)
+					):
+						await coro
+				except Exception as e:
+					if self._fallback_fn:
+						self._fallback_fn(e)
+					if self._raise:
+						raise
+					print(f"Exception after transition from {curr_state} to {next_state}: {e}")
+					return
+
+	def before(self, fn: Callable | Workflow | WorkflowGroup):
+		if not isinstance(fn, (Workflow, WorkflowGroup)):
+			fn = Workflow(fn)
+		if self._fallback_fn:
+			fn.fallback = self._fallback_fn
 		self._before_fn = fn
 		return fn
 
 	def on(self, fn: Callable):
+		if not isinstance(fn, (Workflow, WorkflowGroup)):
+			fn = Workflow(fn)
+		if self._fallback_fn:
+			fn.fallback = self._fallback_fn
 		self._on_fn = fn
 		return fn
 
 	def after(self, fn: Callable):
+		if not isinstance(fn, (Workflow, WorkflowGroup)):
+			fn = Workflow(fn)
+		if self._fallback_fn:
+			fn.fallback = self._fallback_fn
 		self._after_fn = fn
 		return fn
 
 	def fallback(self, fn: Callable):
+		if not isinstance(fn, (Workflow, WorkflowGroup)):
+			fn = Workflow(fn)
+		for cb_fn in [self._before_fn, self._on_fn, self._after_fn]:
+			cb_fn.fallback = fn
 		self._fallback_fn = fn
 		return fn
