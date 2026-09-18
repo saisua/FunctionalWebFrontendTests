@@ -21,11 +21,13 @@ class Reactive:
 					obj = self
 					sub_rvals = self._reactive_values
 
+					# print("react", element, mod, obj, var)
+
 					var_path = var.split('.')
 					for subpath in var_path:
 						obj = getattr(obj, subpath)
 
-						if isinstance(obj, type):
+						if isinstance(obj, type) and StateMachine.State not in obj.__bases__:
 							sub_rvals = sub_rvals.setdefault(f"__cls_{obj.__qualname__}", dict())
 
 							obj._reactive_values = sub_rvals
@@ -37,6 +39,8 @@ class Reactive:
 								dict()
 							)
 
+					# print("# rvals", sub_rvals)
+					# print("# vattrs", var_attrs)
 					var_attrs.setdefault(mod, list()).append(element)  # noqa: E501 # pyright: ignore[reportPossiblyUnboundVariable]
 
 					self._check_mod(mod, element, obj)
