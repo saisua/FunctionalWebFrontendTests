@@ -39,6 +39,12 @@ class Workflow:
 			self.fallback = fallback
 		self._raise = raise_exception
 
+	@property
+	def __func__(self):
+		if len(self.tasks) == 1:
+			return next(iter(self.tasks))
+		return self.tasks
+
 	def __hash__(self) -> int:
 		if len(self.tasks):
 			return hash(tuple(id(fn) for fn in self.tasks))

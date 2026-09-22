@@ -4,6 +4,8 @@ import inspect
 
 try:
 	from .transition import Transition
+
+	from fun_django_web.src.workflows.workflows import Workflow
 except ImportError:
 	pass
 
@@ -26,6 +28,26 @@ class StateMachine(metaclass=MetaStateMachine):
 
 		def __init__(self) -> None:
 			print("State init", self)
+
+		def __init_subclass__(cls) -> None:
+			# print("Init subclass of", cls)
+			for name, member in inspect.getmembers(cls):
+				# print("Checked member", name)
+				if name.startswith('__'):
+					continue
+				if not isinstance(member, Callable):
+					continue
+
+				if getattr(member, '__before__', False):
+					# print(member, "must be run before")
+					cls._before_fn[cls] = member
+				if getattr(member, '__on__', False):
+					# print(member, "must be run on")
+					cls._on_fn[cls] = member
+					print(cls._on_fn)
+				if getattr(member, '__after__', False):
+					# print(member, "must be run after")
+					cls._after_fn[cls] = member
 
 		@property
 		def before_fn(self) -> Callable | None:
@@ -64,7 +86,7 @@ class StateMachine(metaclass=MetaStateMachine):
 			self._after_fn[self] = aft_fn
 
 		@classmethod
-		def to(cls, other: Self, *, transition_type: str = 'call'):
+		def to(cls, other: type[State] | str, *, transition_type: str = 'call'):
 			return Transition(cls, other, transition_type)
 
 		@classmethod
@@ -95,16 +117,25 @@ class StateMachine(metaclass=MetaStateMachine):
 
 		@classmethod
 		def before(cls, fn):
+			if cls is State:
+				getattr(fn, '__func__', fn).__before__ = True
+				return fn
 			cls.before_fn = fn
 			return fn
 
 		@classmethod
 		def on(cls, fn):
+			if cls is State:
+				getattr(fn, '__func__', fn).__on__ = True
+				return fn
 			cls.on_fn = fn
 			return fn
 
 		@classmethod
 		def after(cls, fn):
+			if cls is State:
+				getattr(fn, '__func__', fn).__after__ = True
+				return fn
 			cls.after_fn = fn
 			return fn
 

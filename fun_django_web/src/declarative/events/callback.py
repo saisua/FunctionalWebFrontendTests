@@ -37,6 +37,7 @@ class Callback(Workflow):
 
 	_set_manager: bool = False
 	_pending_managers: dict[tuple[str, str], Callback] = dict()
+	_instances: list[Callback] = list()
 
 	_selector_conditions: dict[str, set[int]] = dict()
 	_condition_id: int = 0
@@ -54,6 +55,7 @@ class Callback(Workflow):
 		self.selector = selector
 
 		super().__init__()
+		type(self)._instances.append(self)
 
 	def _update_fname(self) -> None:
 		self.fname = f'_fn_{self.event or self.__class__.__name__}{self._nfunc}'
