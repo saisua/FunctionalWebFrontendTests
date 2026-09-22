@@ -38,16 +38,26 @@ class StateMachine(metaclass=MetaStateMachine):
 				if not isinstance(member, Callable):
 					continue
 
-				if getattr(member, '__before__', False):
-					# print(member, "must be run before")
+				run_before = getattr(member, '__before__', False)
+				run_on = getattr(member, '__on__', False)
+				run_after = getattr(member, '__after__', False)
+
+				if not (run_before or run_on or run_after):
+					continue 
+
+				if not isinstance(member, Workflow):
+					member = Workflow(member)
+					setattr(cls, name, member)
+
+				if run_before:
 					cls._before_fn[cls] = member
-				if getattr(member, '__on__', False):
-					# print(member, "must be run on")
+					# print(member, "must be run before")
+				if run_on:
 					cls._on_fn[cls] = member
-					print(cls._on_fn)
-				if getattr(member, '__after__', False):
-					# print(member, "must be run after")
+					# print(member, "must be run on")
+				if run_after:
 					cls._after_fn[cls] = member
+					# print(member, "must be run after")
 
 		@property
 		def before_fn(self) -> Callable | None:
@@ -120,6 +130,8 @@ class StateMachine(metaclass=MetaStateMachine):
 			if cls is State:
 				getattr(fn, '__func__', fn).__before__ = True
 				return fn
+			if not isinstance(fn, Workflow):
+				fn = Workflow(fn)
 			cls.before_fn = fn
 			return fn
 
@@ -128,6 +140,8 @@ class StateMachine(metaclass=MetaStateMachine):
 			if cls is State:
 				getattr(fn, '__func__', fn).__on__ = True
 				return fn
+			if not isinstance(fn, Workflow):
+				fn = Workflow(fn)
 			cls.on_fn = fn
 			return fn
 
@@ -136,6 +150,8 @@ class StateMachine(metaclass=MetaStateMachine):
 			if cls is State:
 				getattr(fn, '__func__', fn).__after__ = True
 				return fn
+			if not isinstance(fn, Workflow):
+				fn = Workflow(fn)
 			cls.after_fn = fn
 			return fn
 

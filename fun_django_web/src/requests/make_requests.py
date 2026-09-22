@@ -20,15 +20,24 @@ def __get_csrf_token() -> str:
 
 async def make_request(
     url: str,
-    *,
+    *args,
     method: Literal['GET', 'POST', 'PUT', 'DELETE'],
     _csrf_token: str = __get_csrf_token(),
     **kwargs
 ):
+    req_data: dict | tuple
+    if args:
+        if kwargs:
+            req_data = {'args': args, 'kwargs': kwargs}
+        else:
+            req_data = args
+    else:
+        req_data = kwargs
+
     response = await pyfetch(
         url,
         method=method,
-        body=json.dumps(kwargs, default=str),
+        body=json.dumps(req_data, default=str),
         headers={
             "Content-Type": "application/json",
             "X-CSRFToken": _csrf_token,

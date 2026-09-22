@@ -4,6 +4,9 @@ import json
 from django.http import JsonResponse, HttpRequest
 
 
+empty_dict = dict()
+
+
 def gen_method_endpoint(
     user_session_cls: type,
     fn: Callable,
@@ -21,8 +24,24 @@ def gen_method_endpoint(
         user_session = user_session_cls(request.session)
 
         if request.body:
+            data = json.loads(request.body)
+
+            if isinstance(data, list):
+                args = data
+                kwargs = empty_dict
+            elif isinstance(data, dict):
+                if len(data) == 2 and data.keys() == {'args', 'kwargs'}:
+                    args = data['args']
+                    kwargs = data['kwargs']
+                else:
+                    args = tuple()
+                    kwargs = data
+            else:
+                args = (data,)
+                kwargs = empty_dict
             data = getattr(user_session, _fn_name)(
-                **json.loads(request.body)
+                *args,
+                **kwargs
             )
         else:
             data = getattr(user_session, _fn_name)()

@@ -82,6 +82,7 @@ def gen_build_resources(
 			'return asyncio.create_task('
 			'make_request('
 			f'"{cls._endpoint}/{endpoint_name}",'
+			'*args,'
 			f'method={method!r},'
 			'**kwargs'
 			'))'

@@ -9,6 +9,8 @@ try:
 
 	from fun_django_web.src.notifications.notifications import show_notification
 
+	from fun_django_web.src.workflows.workflows import Workflow
+
 	def __get_csrf_token():
 		return None
 except ImportError:
@@ -160,7 +162,8 @@ class Request:
 
 			if len(args) == 1 and isinstance(args[0], Callable):
 				print("partial req", args, kwargs)
-				return partial(self.bind(callback=args[0], do_copy=False), **kwargs)
+				# return partial(self.bind(callback=args[0], do_copy=False), **kwargs)
+				return Workflow(self.bind(callback=args[0], do_copy=False))
 		print("call req", args, kwargs)
 		return self.send(**kwargs)
 

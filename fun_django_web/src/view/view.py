@@ -23,7 +23,7 @@ BASE_DIR = Path(settings.BASE_DIR)
 
 
 def backend(fn: Callable):
-	fn.__backend__ = True
+	getattr(fn, '__func__', fn).__backend__ = True
 	return fn
 
 
