@@ -43,7 +43,7 @@ class Transition:
 		return self
 
 	async def __call__(self, state_machine: 'StateMachine' = None, /, *args: Any, **kwds: Any) -> Any:
-		print("Transition call", self, state_machine)
+		# print("Transition call", self, state_machine)
 		if state_machine is None:
 			# This is for type hinting reasons
 			raise ValueError("Weird error during transition: state_machine is required")
@@ -62,13 +62,17 @@ class Transition:
 					)
 				):
 					await coro
+				# print(f" Run transition {self} before")
 			except Exception as e:
 				if self._fallback_fn is not None:
+					print(f" Transition {self} fallback at before")
 					return self._fallback_fn(e)
 				if self._raise:
 					raise
 				print(f"Exception before transition from {curr_state} to {next_state}: {e}")
 				return
+		# else:
+		# 	print(f" Transition {self} has no before")
 
 		valid_next_state: bool = next_state is not None and not isinstance(next_state, str)
 		if valid_next_state:
@@ -85,13 +89,17 @@ class Transition:
 						)
 					):
 						await coro
+					# print(f" Run next state {next_state} before")
 				except Exception as e:
 					if self._fallback_fn is not None:
+						print(f" Next state {next_state} fallback at before")
 						return self._fallback_fn(e)
 					if self._raise:
 						raise
 					print(f"Exception before transition from {curr_state} to {next_state}: {e}")
 					return
+			# else:
+			# 	print(f" Next state {next_state} has no before")
 
 		if next_state is None:
 			if hasattr(state_machine, '_on_invalid_transition'):
@@ -117,13 +125,17 @@ class Transition:
 					coro := self._on_fn(state_machine, curr_state, next_state, transition_type)
 				):
 					await coro
+				# print(f" Run transition {self} on")
 			except Exception as e:
+				print(f" Transition {self} fallback at on")
 				if self._fallback_fn is not None:
 					return self._fallback_fn(e)
 				if self._raise:
 					raise
 				print(f"Exception on transition from {curr_state} to {next_state}: {e}")
 				return
+		# else:
+		# 	print(f" Transition {self} has no on")
 
 		if valid_next_state:
 			ns_on_fn = next_state._on_fn.get(next_state)
@@ -134,13 +146,18 @@ class Transition:
 						coro := ns_on_fn(state_machine, curr_state, next_state, transition_type)
 					):
 						await coro
+					# print(f" Run next state {next_state} on")
 				except Exception as e:
 					if self._fallback_fn is not None:
+						print(f" Next state {next_state} fallback at on")
 						return self._fallback_fn(e)
 					if self._raise:
 						raise
 					print(f"Exception on transition from {curr_state} to {next_state}: {e}")
 					return
+			# else:
+			# 	print(next_state, next_state._on_fn)
+			# 	print(f" Next state {next_state} has no on")
 
 		if transition_type == 'outside':
 			try:
@@ -160,13 +177,17 @@ class Transition:
 					)
 				):
 					await coro
+				# print(f" Run transition {self} after")
 			except Exception as e:
 				if self._fallback_fn:
+					print(f" Transition {self} fallback at after")
 					self._fallback_fn(e)
 				if self._raise:
 					raise
 				print(f"Exception after transition from {curr_state} to {next_state}: {e}")
 				return
+		# else:
+		# 	print(f" Transition {self} has no after")
 
 		if valid_next_state:
 			ns_after_fn = next_state._after_fn.get(next_state)
@@ -182,13 +203,17 @@ class Transition:
 						)
 					):
 						await coro
+					# print(f" Run next state {next_state} after")
 				except Exception as e:
 					if self._fallback_fn:
+						print(f" Next state {next_state} fallback at after")
 						self._fallback_fn(e)
 					if self._raise:
 						raise
 					print(f"Exception after transition from {curr_state} to {next_state}: {e}")
 					return
+			# else:
+			# 	print(f" Next state {next_state} has no after")
 
 	def before(self, fn: Callable | Workflow | WorkflowGroup):
 		if not isinstance(fn, (Workflow, WorkflowGroup)):
