@@ -2,14 +2,15 @@ from typing import Any, Self, Callable
 import inspect
 
 try:
+	from .forward_ref import ViewForwardRef
+
 	from fun_django_web.src.notifications.notifications import show_notification
 
 	from fun_django_web.src.workflows.workflows import Workflow, WorkflowGroup
 except ImportError:
 	pass
 
-
-type State_t = 'StateMachine.State'
+type State_t = 'StateMachine.State' | ViewForwardRef
 
 
 class Transition:
@@ -21,6 +22,8 @@ class Transition:
 	_fallback_fn: Workflow | None = None
 
 	_raise: bool
+
+	_owner: type | None = None
 
 	def __init__(
 		self,
@@ -38,9 +41,56 @@ class Transition:
 	def _add_transition(self, from_: State_t, to: State_t, transition_type: str) -> None:
 		self.states[from_] = (to, transition_type)
 
-	def __or__(self, transition: 'Transition') -> Self:
+	def __or__(self, transition: Self) -> Self:
 		self.states.update(transition.states)
 		return self
+
+	def __set_name__(self, owner, attribute_name):
+		self._owner = owner
+
+	def _update_cls_ref(self, cls: type, repl_cls: type) -> Self:
+		if cls in self.states and (cls_from_tos := self.states.pop(cls)):
+			if self._owner is not None:
+				cls_from_tos = ViewForwardRef.try_resolve(cls_from_tos, self._owner)
+			# print(f"Replaced from {cls} to {repl_cls} ({cls_from_tos} in {self._owner})")
+			self.states[repl_cls] = cls_from_tos
+
+		for from_state, (to_state, trans_type) in self.states.items():
+			if to_state is cls:
+				if self._owner is not None:
+					repl_cls = ViewForwardRef.try_resolve(repl_cls, self._owner)
+				# print(f"Replaced to {to_state} to {repl_cls} (from {from_state} in {self._owner})")
+				self.states[from_state] = (repl_cls, trans_type)
+
+		return self
+
+	def _join(self, transition: Self) -> Self:
+		if transition._before_fn:
+			if self._before_fn is not self._before_fn:
+				raise RuntimeError(
+					f"Can't merge transitions {self} and {transition} with two different before functions"
+				)
+			self._before_fn = transition._before_fn
+		if transition._on_fn:
+			if self._on_fn is not self._on_fn:
+				raise RuntimeError(
+					f"Can't merge transitions {self} and {transition} with two different on functions"
+				)
+			self._on_fn = transition._on_fn
+		if transition._after_fn:
+			if self._after_fn is not self._after_fn:
+				raise RuntimeError(
+					f"Can't merge transitions {self} and {transition} with two different after functions"
+				)
+			self._after_fn = transition._after_fn
+		if transition._fallback_fn:
+			if self._fallback_fn is not self._fallback_fn:
+				raise RuntimeError(
+					f"Can't merge transitions {self} and {transition} with two different fallback functions"
+				)
+			self._fallback_fn = transition._fallback_fn
+		self._raise |= transition._raise
+		return self | transition
 
 	async def __call__(self, state_machine: 'StateMachine' = None, /, *args: Any, **kwds: Any) -> Any:
 		# print("Transition call", self, state_machine)
@@ -50,6 +100,32 @@ class Transition:
 
 		curr_state = state_machine._current_state
 		next_state, transition_type = self.states.get(curr_state, (None, None))
+
+		updated_fwd = False
+
+		print(self.states)
+		print("Cstate", curr_state)
+		if isinstance(curr_state, ViewForwardRef):
+			updated_fwd = True
+			self.states.pop(curr_state)
+			if curr_state.owner is None:
+				curr_state.owner = self._owner
+			curr_state = curr_state.get()
+			print(f"Updated transition curr to {curr_state}")
+
+			if next_state is None:
+				next_state, transition_type = self.states.get(curr_state, (None, None))
+
+		print("Nstate", next_state)
+		if isinstance(next_state, ViewForwardRef):
+			updated_fwd = True
+			if next_state.owner is None:
+				next_state.owner = self._owner
+			next_state = next_state.resolve()
+			print(f"Updated transition next to {next_state}")
+
+		if updated_fwd:
+			self.states[curr_state] = (next_state, transition_type)
 
 		if self._before_fn is not None:
 			try:
@@ -74,7 +150,7 @@ class Transition:
 		# else:
 		# 	print(f" Transition {self} has no before")
 
-		valid_next_state: bool = next_state is not None and not isinstance(next_state, str)
+		valid_next_state: bool = next_state is not None and not isinstance(next_state, ViewForwardRef)
 		if valid_next_state:
 			ns_before_fn = next_state._before_fn.get(next_state)
 

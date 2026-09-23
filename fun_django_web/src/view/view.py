@@ -34,7 +34,7 @@ class BaseViewMeta(ABCMeta, StateMachine.__class__):
 @Doc("Base View class for new web page views")
 class BaseView(ABC, StateMachine, metaclass=BaseViewMeta):
 	_skip_subclass_init: bool = False
-	_endpoint: Path
+	_endpoint: Path | str
 
 	_gen_urls: list[URLPattern] = list()
 	_rpc_pending: list[tuple[str, dict[str, Any]]] = list()
@@ -67,35 +67,47 @@ class BaseView(ABC, StateMachine, metaclass=BaseViewMeta):
 		raise RuntimeError(f"No cls for {request.path} in {BaseView._endpoint_refs}")
 
 	@classmethod
+	def get_endpoint(cls) -> str | Path:
+		view_endpoint = getattr(cls, '_endpoint', None)
+		if view_endpoint is None and hasattr(cls, 'Meta'):
+			view_endpoint = getattr(cls.Meta, '_endpoint', None)
+
+		if view_endpoint is None:
+			raise ValueError(
+				"Missing _endpoint must be in the root "
+				"of the view or in the Meta inner class"
+			)
+		if not (
+			isinstance(view_endpoint, (Path, str)) and
+			str(view_endpoint)
+		):
+			raise ValueError("Invalid _endpoint must be a valid Path or str")
+
+		return view_endpoint
+
+	@classmethod
 	def __init_subclass__(cls):
 		super().__init_subclass__()
 
-		cls._endpoint_refs[str(cls._endpoint).strip(' /')] = cls
+		view_endpoint = cls.get_endpoint()
+		cls._endpoint_refs[str(view_endpoint).strip(' /')] = cls
 
 		if settings.DEBUG or not Path(
 			BASE_DIR,
 			"fun_django_web",
 			"generated",
-			cls._endpoint,
+			view_endpoint,
 			"index.html"
 		).exists():
 			base_cls = cls
 			if base_cls._skip_subclass_init:
 				return
 
-			# Checks
-			if (
-				not hasattr(base_cls, '_endpoint') or
-				not isinstance(base_cls._endpoint, Path) or
-				not str(base_cls._endpoint)
-			):
-				raise ValueError("Invalid _endpoint")
-
 			class UserSession(base_cls):
 				_skip_subclass_init = True
 				_session: SessionBase
 
-				_endpoint = base_cls._endpoint
+				_endpoint = view_endpoint
 
 				def __init__(self, session: SessionBase) -> None:
 					super().__init__()
@@ -128,7 +140,7 @@ class BaseView(ABC, StateMachine, metaclass=BaseViewMeta):
 								continue
 							if (
 								not isinstance(value, (
-									int, list, tuple, set, dict, str, bytes, float, bool
+									int, list, tuple, set, dict, str, bytes, float, bool, type
 								)) and not (
 									hasattr(value, '__getstate__') and
 									hasattr(value, '__setstate__')
@@ -194,6 +206,9 @@ class BaseView(ABC, StateMachine, metaclass=BaseViewMeta):
 							obj = obj[name_path_part]
 
 						obj[last_name_part] = value
+
+			if hasattr(base_cls, 'Meta'):
+				UserSession.Meta = base_cls.Meta
 
 			cls = UserSession
 

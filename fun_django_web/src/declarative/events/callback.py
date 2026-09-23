@@ -7,6 +7,7 @@ from copy import copy
 try:
 	from fun_django_web.src.declarative.functions import pure
 
+	from fun_django_web.src.state_machine.state_machine import ViewForwardRef
 	from fun_django_web.src.state_machine.transition import Transition
 
 	from fun_django_web.src.notifications.notifications import show_notification
@@ -31,8 +32,8 @@ class Callback(Workflow):
 	owner: object | None = None
 
 	effects: dict[int, tuple[
-		list[Callable[[object, object], bool]],
-		list[Workflow | WorkflowGroup | Transition | str]
+		list[Callable[[object | ViewForwardRef, object | ViewForwardRef], bool]],
+		list[Workflow | WorkflowGroup | Transition | ViewForwardRef]
 	]]
 
 	_set_manager: bool = False
@@ -42,6 +43,8 @@ class Callback(Workflow):
 	_selector_conditions: dict[str, set[int]] = dict()
 	_condition_id: int = 0
 	_ncond: int = 1
+
+	_owner: type
 
 	def __init__(self, selector: str, *, event: str) -> None:
 		self.effects = {
@@ -56,6 +59,9 @@ class Callback(Workflow):
 
 		super().__init__()
 		type(self)._instances.append(self)
+
+	def __set_name__(self, owner, attribute_name):
+		self._owner = owner
 
 	def _update_fname(self) -> None:
 		self.fname = f'_fn_{self.event or self.__class__.__name__}{self._nfunc}'
@@ -151,7 +157,9 @@ class Callback(Workflow):
 			if len(conditions):
 				cond_ok = True
 				for cond in conditions:
-					if not cond(view, event):
+					print("Condition", cond)
+					cond = ViewForwardRef.try_resolve(cond, self._owner)
+					if not cond(self._owner, event):
 						# print(" Cond not satisfied")
 						cond_ok = False
 						break
@@ -162,12 +170,9 @@ class Callback(Workflow):
 
 			async with TaskGroup() as tg:
 				for actor in actors:
-					if isinstance(actor, str):
-						if self.owner is not None:
-							actor = getattr(self.owner, actor)
-							if isinstance(actor, str):  # No actor found
-								print(f"Get actor from", self.owner, actor, self.owner._current_state, id(self.owner))
-								actor = getattr(self.owner._current_state, actor)
+					print("Actor", actor, self._owner)
+					actor = ViewForwardRef.try_resolve(actor, self._owner)
+
 					if isinstance(actor, Transition):
 						tg.create_task(actor(view))
 					else:
@@ -178,8 +183,6 @@ class Callback(Workflow):
 			show_notification(f"No conditions met for event {event}")
 
 	def _add_condition(self, cond: str | Callable[[object, object], bool]):
-		if isinstance(cond, str):
-			cond = getattr(self.owner, cond)
 		conditions = self.effects.setdefault(self._condition_id, (list(), list()))[0]
 		conditions.append(pure(cond))
 		return self
@@ -201,7 +204,7 @@ class Callback(Workflow):
 		return self_copy
 
 	def add_actor(self, actor: str | Callable | Workflow | WorkflowGroup):
-		if not isinstance(actor, (str, Workflow, WorkflowGroup)):
+		if not isinstance(actor, (ViewForwardRef, Workflow, WorkflowGroup)):
 			actor = Workflow(actor)
 
 		actors = self.effects[self._condition_id][1]
@@ -211,13 +214,13 @@ class Callback(Workflow):
 
 		return self
 
-	def __lshift__(self, *cond: str | Callable):
+	def __lshift__(self, *cond: ViewForwardRef | Callable):
 		self_copy = self._update_condition_id()
 		for c in cond:
 			self_copy._add_condition(c)
 		return self_copy
 
-	def __rshift__(self, *actor: str | Callable):
+	def __rshift__(self, *actor: ViewForwardRef | Callable):
 		for a in actor:
 			self.add_actor(a)
 		return self

@@ -18,6 +18,7 @@ PY_SCRIPTS = [
 	STATIC_URL / "utils" / "classproperty.py",
 	STATIC_URL / "utils" / "docstr.py",
 	STATIC_URL / "utils" / "partial_format.py",
+	STATIC_URL / "state_machine" / "forward_ref.py",
 	STATIC_URL / "workflows" / "workflows.py",
 	STATIC_URL / "requests" / "make_requests.py",
 	STATIC_URL / "requests" / "request.py",

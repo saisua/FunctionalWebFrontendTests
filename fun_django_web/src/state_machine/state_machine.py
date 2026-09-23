@@ -4,21 +4,37 @@ import inspect
 
 try:
 	from .transition import Transition
+	from .forward_ref import ViewForwardRef
 
 	from fun_django_web.src.workflows.workflows import Workflow
 except ImportError:
 	pass
 
 
-class MetaStateMachine(type):
-	def __getattr__(self, name):
+class MetaState(type):
+	__outer_owner__: type
+
+	def __new__(cls, name, bases, namespace):
+		scls = super().__new__(cls, name, bases, namespace)
+		for value in namespace.values():
+			if isinstance(value, type):
+				value.__outer_owner__ = scls
+		return scls
+
+
+class MetaStateMachine(MetaState):
+	_obj_references: list[object] = list()
+
+	def __getattr__(self, name: str):
 		if name.startswith('_'):
 			raise AttributeError(f"Attribute {name!r} does not exist in {self}")
-		return name
+		if self is StateMachine:
+			self = None
+		return ViewForwardRef(self, name)
 
 
 class StateMachine(metaclass=MetaStateMachine):
-	class State:
+	class State(metaclass=MetaState):
 		initial: bool = False
 		final: bool = False
 
@@ -96,7 +112,7 @@ class StateMachine(metaclass=MetaStateMachine):
 			self._after_fn[self] = aft_fn
 
 		@classmethod
-		def to(cls, other: type[State] | str, *, transition_type: str = 'call'):
+		def to(cls, other: type[State] | ViewForwardRef, *, transition_type: str = 'call'):
 			return Transition(cls, other, transition_type)
 
 		@classmethod
@@ -162,6 +178,7 @@ class StateMachine(metaclass=MetaStateMachine):
 	__initial_state: type[State]
 
 	def __init__(self) -> None:
+		self._obj_references.append(self)
 		try:
 			import pyodide  # TODO: Move to lazy import
 
@@ -184,6 +201,8 @@ class StateMachine(metaclass=MetaStateMachine):
 		self._current_state = self.__initial_state
 
 	def __init_subclass__(cls) -> None:
+		transition_classes: dict[str, set[type]] = dict()
+
 		found_state: bool = False
 		initial_state: type[StateMachine.State] | None = None
 		for attr, value in inspect.getmembers(cls):
@@ -199,11 +218,63 @@ class StateMachine(metaclass=MetaStateMachine):
 						)
 					initial_state = value
 
+				for sub_attr, sub_value in inspect.getmembers(value):
+					if isinstance(sub_value, Transition):
+						transition_classes.setdefault(sub_attr, set()).add(value)
+
 		if found_state:
 			if initial_state is None:
 				raise ValueError("It is required to define a initial state")
 			cls.__initial_state = initial_state
 			cls._current_state = initial_state
+
+		print(transition_classes)
+
+		for transition, tclasses in transition_classes.items():
+			if len(tclasses) > 1:
+				curr_trans = None
+				for tclass in tclasses:
+					if curr_trans is None:
+						curr_trans = getattr(
+							tclass,
+							transition
+						)._update_cls_ref(StateMachine.State, tclass)
+					else:
+						curr_trans = curr_trans._join(
+							getattr(
+								tclass,
+								transition
+							)._update_cls_ref(StateMachine.State, tclass)
+						)
+
+				for tclass in tclasses:
+					setattr(tclass, transition, curr_trans)
+			else:
+				tclass = next(iter(tclasses))
+				curr_trans = getattr(
+					tclass,
+					transition
+				)._update_cls_ref(StateMachine.State, tclass)
+
+			setattr(cls, transition, curr_trans)
+
+			# print(f"Updated transition {transition} in {tclasses} and {cls}")
+
+	def __getattr__(self, name):
+		if name.startswith('__'):
+			return object.__getattribute__(self, name)
+
+		for base in type(self).__mro__:
+			try:
+				if base is not StateMachine and StateMachine not in base.__mro__:
+					print(f"Looking for {name} in {base}")
+					return getattr(base, name)
+			except Exception:
+				continue
+
+		print(f"Trying for {name} in _current_state")
+		curr_state = object.__getattribute__(self, '_current_state')
+		return getattr(curr_state, name)
 
 
 State = StateMachine.State

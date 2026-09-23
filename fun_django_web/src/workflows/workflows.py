@@ -45,14 +45,14 @@ class Workflow:
 			return next(iter(self.tasks))
 		return self.tasks
 
-	@property
-	def __doc__(self) -> str:
-		return next(iter(self.tasks))
+	# @property
+	# def __doc__(self) -> str:
+	# 	return next(iter(self.tasks))
 
-	@__doc__.setter
-	def __doc__(self, new_doc: str):
-		for task in self.tasks:
-			task.__doc__ = new_doc
+	# @__doc__.setter
+	# def __doc__(self, new_doc: str):
+	# 	for task in self.tasks:
+	# 		task.__doc__ = new_doc
 
 	def __hash__(self) -> int:
 		if len(self.tasks):

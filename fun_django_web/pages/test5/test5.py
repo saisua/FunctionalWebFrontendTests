@@ -2,7 +2,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from fun_django_web.src.view import BaseView, backend
-from fun_django_web.src.state_machine.state_machine import State, Transition
+from fun_django_web.src.state_machine.state_machine import State
 
 # from fun_django_web.src.notifications.notifications import show_notification
 
@@ -22,13 +22,14 @@ from utils.docstr import Doc
 
 @Doc("Test5 page view that tries to integrate declarative events as workflows")
 class view(BaseView):
-	_endpoint = Path("test5")
-	_page = build_page()
-	_stylesheets = [
-		CSS,
-		NotificationCSS,
-		ButtonCSS,
-	]
+	class Meta:
+		_endpoint = Path("test5")
+		_page = build_page()
+		_stylesheets = [
+			CSS,
+			NotificationCSS,
+			ButtonCSS,
+		]
 
 	class Counter(Fact):
 		enabled: int = 1
@@ -41,6 +42,11 @@ class view(BaseView):
 	@Doc(file='docs/states/enabled.rst')
 	class Enabled(State):
 		initial = True
+
+		disable = State.to(BaseView.Disabled)
+		start_saving = State.to(BaseView.Saving)
+		fail = State.to(BaseView.Failure)
+		reset = State.to(BaseView.Disabled)
 
 		@Doc("Increment the enabled counter by 1")
 		@staticmethod
@@ -71,6 +77,10 @@ class view(BaseView):
 
 	@Doc(file='docs/states/disabled.rst')
 	class Disabled(State):
+		enable = State.to(BaseView.Enabled)
+		reset = State.to_itself()
+		leave = State.to_outside('/')
+
 		@Doc("Increment the disabled counter by 1")
 		@staticmethod
 		async def increment(state, event):
@@ -79,6 +89,9 @@ class view(BaseView):
 
 	@Doc(file='docs/states/saving.rst')
 	class Saving(State):
+		enable = State.to(BaseView.Enabled)
+		fail = State.to(BaseView.Failure)
+
 		get_time_request: Request @ Doc(file='docs/requests/get_time.rst') = Request(
 			"GET",
 			"https://aisenseapi.com/services/v1/datetime",
@@ -111,6 +124,8 @@ class view(BaseView):
 
 	@Doc(file='docs/states/failure.rst')
 	class Failure(State):
+		reset = State.to(BaseView.Disabled)
+
 		@Doc("Example failure callback")
 		@State.on
 		@staticmethod
@@ -122,37 +137,37 @@ class view(BaseView):
 		):
 			print("Failed time request")
 
-	enable: Transition = (
-		Disabled.to(Enabled)
-		| Saving.to(Enabled)  # noqa: W503
-	)
-	disable: Transition = (
-		Enabled.to(Disabled)
-	)
-	start_saving: Transition = (
-		Enabled.to(Saving)
-	)
-	fail: Transition = (
-		Saving.to(Failure)
-		# TODO: Ideally we could go from failure
-		| Enabled.to(Failure)  # noqa: W503
-	)
-	reset: Transition = (
-		Failure.to(Disabled)
-		| Enabled.to(Disabled)  # noqa: W503
-		| Disabled.to_itself()  # noqa: W503
-	)
-	leave: Transition = (
-		Disabled.to_outside("/")
-	)
+	# enable: Transition = (
+	# 	Disabled.to(Enabled)
+	# 	| Saving.to(Enabled)  # noqa: W503
+	# )
+	# disable: Transition = (
+	# 	Enabled.to(Disabled)
+	# )
+	# start_saving: Transition = (
+	# 	Enabled.to(Saving)
+	# )
+	# fail: Transition = (
+	# 	Saving.to(Failure)
+	# 	# TODO: Ideally we could go from failure
+	# 	| Enabled.to(Failure)  # noqa: W503
+	# )
+	# reset: Transition = (
+	# 	Failure.to(Disabled)
+	# 	| Enabled.to(Disabled)  # noqa: W503
+	# 	| Disabled.to_itself()  # noqa: W503
+	# )
+	# leave: Transition = (
+	# 	Disabled.to_outside("/")
+	# )
 
-	increment_event = Callback.click(_page.increment_btn.id).do(BaseView.increment)
-	decrement_event = Callback.click(_page.decrement_btn.id).do(BaseView.decrement)
-	enable_event = Callback.click(_page.enable_btn.id).do(enable)
-	disable_event = Callback.click(_page.disable_btn.id).do(disable)
-	reset_event = Callback.click(_page.reset_btn.id).do(reset)
-	save_event = Callback.click(_page.save_btn.id).do(Saving.get_time_request)
-	Callback.click(_page.leave_btn.id).do(leave)
+	increment_event = Callback.click(Meta._page.increment_btn.id).do(BaseView.increment)
+	decrement_event = Callback.click(Meta._page.decrement_btn.id).do(BaseView.decrement)
+	enable_event = Callback.click(Meta._page.enable_btn.id).do(BaseView.enable)
+	disable_event = Callback.click(Meta._page.disable_btn.id).do(BaseView.disable)
+	reset_event = Callback.click(Meta._page.reset_btn.id).do(BaseView.reset)
+	save_event = Callback.click(Meta._page.save_btn.id).do(Saving.get_time_request)
+	Callback.click(Meta._page.leave_btn.id).do(BaseView.leave)
 
 	@Doc("In the backend, save the data")
 	@backend
@@ -165,7 +180,7 @@ class view(BaseView):
 		return self._saved_data
 
 	@Doc("Reset the view")
-	@reset.on
+	@Failure.reset.on
 	async def reset_state(
 		self,
 		from_state: State,

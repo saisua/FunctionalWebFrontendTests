@@ -11,6 +11,8 @@ try:
 
 	from fun_django_web.src.workflows.workflows import Workflow
 
+	from fun_django_web.src.state_machine.forward_ref import ViewForwardRef
+
 	def __get_csrf_token():
 		return None
 except ImportError:
@@ -29,6 +31,8 @@ class Request:
 	_transition: str | Callable | None = None
 	_callback: Callable | None = None
 	_fallback: Callable | None = None
+
+	_owner: type | None = None
 
 	def __init__(
 		self,
@@ -63,31 +67,34 @@ class Request:
 			self._fallback = fallback
 			self._frozen.add('fallback')
 
+	def __set_name__(self, owner, attribute_name):
+		self._owner = owner
+
 	@property
 	def transition(self):
-		if isinstance(self._transition, str):
-			try:
-				self._transition = getattr(view, self._transition)
-			except NameError:
-				pass
+		if isinstance(self._transition, ViewForwardRef):
+			self._transition = ViewForwardRef.try_resolve(
+				self._transition,
+				self._owner
+			)
 		return self._transition
 
 	@property
 	def callback(self):
-		if isinstance(self._callback, str):
-			try:
-				self._callback = getattr(view, self._callback)
-			except NameError:
-				pass
+		if isinstance(self._callback, ViewForwardRef):
+			self._callback = ViewForwardRef.try_resolve(
+				self._callback,
+				self._owner
+			)
 		return self._callback
 
 	@property
 	def fallback(self):
-		if isinstance(self._fallback, str):
-			try:
-				self._fallback = getattr(view, self._fallback)
-			except NameError:
-				pass
+		if isinstance(self._fallback, ViewForwardRef):
+			self._fallback = ViewForwardRef.try_resolve(
+				self._fallback,
+				self._owner
+			)
 		return self._fallback
 
 	def __repr__(self) -> str:

@@ -10,7 +10,7 @@ from fun_django_web.src.page.page import Page
 from fun_django_web.src.state_machine.state_machine import StateMachine
 
 
-_page_re = re.compile(r"(\W|^)(_page.\w+(\.\w+)*)")
+_page_re = re.compile(r"(\W|^)((?:Meta\.)?_page.\w+(?:\.\w+)*)")
 
 
 @dataclass
@@ -30,9 +30,25 @@ def gen_build_resources(
 ) -> built_resources:
 	reference = built_resources()
 
+	if hasattr(cls, 'Meta'):
+		meta_cls = cls.Meta
+	else:
+		meta_cls = None
+
+	view_meta: list[str] = list()
+	view_meta_class: list[str] = []
+
+	page = None
+	_page_in_meta = False
 	if hasattr(cls, "_page"):
+		page = cls._page
+	elif hasattr(meta_cls, "_page"):
+		page = meta_cls._page
+		_page_in_meta = True
+
+	if page is not None:
 		result = Page._builder_start.copy()
-		for child in cls._page.body.children:
+		for child in page.body.children:
 			child.builder(output=result)
 
 		script_path = view_static_path / "__script.py"
@@ -42,46 +58,88 @@ def gen_build_resources(
 		)
 		reference.page_script = script_path
 
-	static_folder = view_static_path.parent
-	if hasattr(cls, '_stylesheets'):
-		stylesheets = cls._stylesheets
+		if _page_in_meta:
+			meta_src = view_meta_class
+		else:
+			meta_src = view_meta
+		meta_src.append("_page = document")
 
+	stylesheets = None
+	_sheets_in_meta = False
+	if hasattr(cls, "_stylesheets"):
+		stylesheets = cls._stylesheets
+	elif hasattr(meta_cls, "_stylesheets"):
+		stylesheets = meta_cls._stylesheets
+		_sheets_in_meta = True
+
+	static_folder = view_static_path.parent
+	if stylesheets is not None:
 		if not isinstance(stylesheets, (list, tuple, set)):
 			stylesheets = [stylesheets]
 
+		stylesheets_base_path = Path("fun_django_web", "generated").absolute()
+		sheet_url_dict = dict()
+		sheet_output_paths = None
 		for stylesheet in stylesheets:
 			if hasattr(stylesheet, '_output_paths'):
-				output_paths = stylesheet._output_paths
+				sheet_output_paths = stylesheet._output_paths
 
-				if not isinstance(output_paths, (list, tuple)):
-					output_paths = [output_paths]
+				if not isinstance(sheet_output_paths, (list, tuple)):
+					sheet_output_paths = [sheet_output_paths]
 
-				output_paths = [
+				sheet_output_paths = [
 					static_folder / p
-					for p in output_paths
+					for p in sheet_output_paths
 				]
 			else:
-				output_paths = [
+				sheet_output_paths = [
 					view_static_path / f"{stylesheet.__name__}.css"
 				]
+
+			sheet_url_dict[stylesheet.__name__] = str(Path(
+				"static",
+				"generated_pages",
+				sheet_output_paths[0].relative_to(stylesheets_base_path)
+			))
 
 			stylesheet_src = (
 				'/* CSS autogenrated from a Python CSS object */\n' +
 				stylesheet.generate()
 			)
-			for output_path in output_paths:
+			for output_path in sheet_output_paths:
 				output_path.write_text(
 					stylesheet_src
 				)
 
-			reference.stylesheets.extend(output_paths)
+			reference.stylesheets.extend(sheet_output_paths)
+
+		if sheet_output_paths:
+			if _sheets_in_meta:
+				meta_src = view_meta_class
+			else:
+				meta_src = view_meta
+			meta_src.extend((
+				"_stylesheets = {",
+				"\tname: next((s for s in document.styleSheets if str(s.href) == url), None)",
+				f"\tfor name, url in {sheet_url_dict!r}.items()",
+				"}",
+			))
+
+	if hasattr(cls, "_endpoint"):
+		view_endpoint = cls._endpoint
+		view_meta.append(f"_endpoint = {str(view_endpoint)!r}")
+	elif hasattr(meta_cls, "_endpoint"):
+		view_endpoint = meta_cls._endpoint
+		view_meta_class.append(f"_endpoint = {str(view_endpoint)!r}")
+	else:
+		raise ValueError("Missing _endpoint")
 
 	if back_endpoints or back_attr_endpoints:
 		back_endpoints_src: str = '\n'.join((
 			f'def {endpoint_name}(*args, **kwargs): '
 			'return asyncio.create_task('
 			'make_request('
-			f'"{cls._endpoint}/{endpoint_name}",'
+			f'"{view_endpoint}/{endpoint_name}",'
 			'*args,'
 			f'method={method!r},'
 			'**kwargs'
@@ -98,13 +156,13 @@ def gen_build_resources(
 		)
 		reference.back_methods = back_methods_path
 
+	front_view_meta_src: str = "\n\t" + "\n\t".join(view_meta)
+	if view_meta_class:
+		front_view_meta_src += "\n\tclass Meta:\n\t\t" + "\n\t\t".join(view_meta_class)
+
 	front_class_name = "PageView"
 	front_class_def = '\n'.join((
-		'\n\t'.join([
-			'class BaseViewMeta:',
-			'def __getattr__(self, name: str): return name'
-		]),
-		"BaseView = BaseViewMeta()",
+		"BaseView = StateMachine",
 		'\n\t'.join([
 			f'class {front_class_name}(StateMachine, Reactive):',
 			'def __init__(self, *args, **kwargs):',
@@ -125,6 +183,9 @@ def gen_build_resources(
 
 		if isinstance(node, ast.ClassDef):
 			attr_name = node.name
+
+			if attr_name == "Meta":
+				continue
 
 		elif isinstance(node, ast.AnnAssign):
 			if isinstance(node.target, ast.Name):
@@ -217,6 +278,7 @@ def gen_build_resources(
 		front_functions_src = ''
 
 	if (
+		front_view_meta_src or
 		front_functions_src or
 		front_back_functions_src or
 		front_var_definitions_src
@@ -228,6 +290,7 @@ def gen_build_resources(
 		front_view_path = view_static_path / "front_view_class.py"
 		front_view_path.write_text(
 			front_class_def +
+			front_view_meta_src +
 			front_var_definitions_src +
 			front_back_functions_src +
 			front_functions_src +

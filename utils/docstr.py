@@ -5,6 +5,9 @@ from textwrap import dedent
 import inspect
 
 
+# TO BE REMOVED once the typing Doc annotation is added to mainline Python
+
+
 type_t = TypeVar('type_t')
 
 
@@ -40,7 +43,11 @@ class Doc:
 			self.docstring = dedent(self.docstring)
 
 	def __call__(self, obj: type_t) -> type_t:
-		obj.__doc__ = self.docstring
+		try:
+			obj.__doc__ = self.docstring
+		except AttributeError as err:
+			print(f"Warning: {obj} {err}")
+			pass
 		return obj
 
 	def __rmatmul__(self, other: type_t) -> type_t:
