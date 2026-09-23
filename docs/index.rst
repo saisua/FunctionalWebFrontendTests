@@ -1,17 +1,19 @@
-.. FunDjangoWeb documentation master file, created by
-   sphinx-quickstart on Tue Jun 16 12:45:58 2026.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 FunDjangoWeb documentation
 ==========================
 
-Add your content using ``reStructuredText`` syntax. See the
-`reStructuredText <https://www.sphinx-doc.org/en/master/usage/restructuredtext/index.html>`_
-documentation for details.
+Framework and page documentation generated with Sphinx autodoc.
 
+API and page trees are regenerated on every build by walking
+``utils/``, ``fun_django_web/src/``, ``fun_django_web/components/``,
+and ``fun_django_web/pages/``.
+
+Attribute docs from ``utils.docstr.Doc`` (including ``T @ Doc(...)``) are
+shown as attribute docstrings; the docstring text is stripped from the
+displayed type.
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
+   api/index
+   pages/index
