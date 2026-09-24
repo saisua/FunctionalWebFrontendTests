@@ -17,6 +17,7 @@ try:
 except Exception:
 	test4_view = fake_view
 from fun_django_web.pages.test5 import view as test5_view
+from fun_django_web.pages.test5_lib import view as test5_lib_view
 
 
 urlpatterns = [
@@ -25,4 +26,5 @@ urlpatterns = [
 	*test3_view.get_urls(),
 	*test4_view.get_urls(),
 	*test5_view.get_urls(),
+	*test5_lib_view.get_urls(),
 ]
