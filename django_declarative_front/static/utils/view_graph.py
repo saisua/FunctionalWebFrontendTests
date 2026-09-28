@@ -798,7 +798,7 @@ def describe_view(ViewCls: type) -> PageGraphData:
 			src_id = state_node_id(src_st)
 			if src_id is None:
 				continue
-			if ttype == 'outside' and isinstance(dst, str):
+			if ttype.startswith('outside') and isinstance(dst, str):
 				# Cross-page / external handled in build_site_graph; record placeholder
 				data.edges.append(
 					GraphEdge(

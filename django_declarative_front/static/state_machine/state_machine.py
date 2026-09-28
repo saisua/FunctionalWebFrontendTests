@@ -113,8 +113,14 @@ class StateMachine(metaclass=MetaStateMachine):
 			return cls.to(cls)
 
 		@classmethod
-		def to_outside(cls, out_url: str):
-			return cls.to(out_url, transition_type='outside')
+		def to_outside(cls, out_url: str, *, one_page: bool = False, preload: bool = True):
+			trans_type = "outside"
+			if one_page:
+				if preload:
+					trans_type += '[1p]'
+				else:
+					trans_type += '[1]'
+			return cls.to(out_url, transition_type=trans_type)
 
 		def __eq__(self, value: Self) -> bool:  # pyright: ignore[reportIncompatibleMethodOverride] # noqa: E501
 			if isinstance(value, str):

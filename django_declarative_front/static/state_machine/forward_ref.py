@@ -22,7 +22,7 @@ class ViewForwardRef:
 		fwd: Fwd | ViewForwardRef,
 		new_owner: type | None = None
 	) -> Fwd | Any:
-		if not isinstance(fwd, ViewForwardRef):
+		if not isinstance(fwd, ViewForwardRef) or new_owner is None or new_owner is fwd.owner:
 			return fwd
 
 		prev_owner = fwd.owner

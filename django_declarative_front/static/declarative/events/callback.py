@@ -45,7 +45,7 @@ class Callback(Workflow):
 	_condition_id: int = 0
 	_ncond: int = 1
 
-	_owner: type
+	_owner: type | None = None
 
 	def __init__(self, selector: str, *, event: str) -> None:
 		self.effects = {

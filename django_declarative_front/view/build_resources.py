@@ -1,6 +1,8 @@
 from pathlib import Path
 from itertools import chain, repeat
+from textwrap import dedent
 import inspect
+import importlib
 import ast
 import re
 from textwrap import dedent
@@ -9,7 +11,7 @@ from dataclasses import dataclass, field
 from django.conf import settings
 
 from django_declarative_front.page.page import Page
-# from django_declarative_front.static.state_machine.state_machine import StateMachine
+from django_declarative_front.static.state_machine.transition import Transition
 
 
 _page_re = re.compile(r"(\W|^)((?:Meta\.)?_page.\w+(?:\.\w+)*)")
@@ -24,6 +26,7 @@ class built_resources:
 	stylesheets: list[Path] = field(default_factory=list)
 	back_methods: Path | None = None
 	front_view_class: Path | None = None
+	transitions_out: list[Path] = field(default_factory=list)
 
 
 def gen_build_resources(
@@ -43,7 +46,7 @@ def gen_build_resources(
 	view_meta: list[str] = list()
 	view_meta_class: list[str] = []
 
-	page = None
+	page: Page | None = None
 	_page_in_meta = False
 	if hasattr(cls, "_page"):
 		page = cls._page
@@ -68,6 +71,60 @@ def gen_build_resources(
 		else:
 			meta_src = view_meta
 		meta_src.append("_page = document")
+
+		# Generate one_page transition diff scripts
+		for name, member in inspect.getmembers(cls.__base__):
+			if not isinstance(member, Transition):
+				continue
+			for from_state, (to_state, trans_type) in member.states.items():
+				if not isinstance(to_state, str):
+					continue
+				if to_state.startswith('http://') or to_state.startswith('https://'):
+					continue
+
+				trans_type, modifiers = trans_type.rstrip('] ').split('[', 1)
+				if '1' not in modifiers:
+					continue
+
+				to_state = Path(to_state)
+				if not to_state.exists():
+					if (BASE_DIR / to_state).exists():
+						to_state = BASE_DIR / to_state
+					# elif  # TODO: Relative to cls
+					else:
+						raise ValueError(f"Not found to_outside one_page transition file {to_state}")
+
+				to_state_module_name = to_state.name
+				module_path = str(to_state.relative_to(BASE_DIR.parent)).replace('/', '.')
+				if module_path.endswith('.py'):
+					module_path = module_path[:-3]
+				module = importlib.import_module(module_path)
+
+				for obj in vars(module).values():
+					if not isinstance(obj, type):
+						continue
+
+					if cls.__base__.__base__ in obj.__bases__:
+						transition_view = obj
+						break
+				else:
+					raise ValueError(f"Not found BaseView class in to_outside one_page transition file {to_state}")
+
+				transition_page: Page | None = None
+				if hasattr(transition_view, "_page"):
+					transition_page = transition_view._page
+				elif hasattr(transition_view, 'Meta') and hasattr(meta_cls.Meta, "_page"):
+					transition_page = transition_view.Meta._page
+
+				if transition_page is not None:
+					front_transition_path = view_static_path / f"to_{to_state_module_name}"
+					front_transition_path.write_text('\n'.join(
+						page.diff_builder(transition_page)
+					))
+					print(f"Generated page diff to {front_transition_path}")
+				else:
+					print(f"[Warning] transition to {to_state} has no _page")
+
 
 	stylesheets = None
 	_sheets_in_meta = False
@@ -290,7 +347,7 @@ def gen_build_resources(
 	):
 		front_startup_code = getattr(cls, '_front_startup', '')
 		if front_startup_code:
-			front_startup_code = '\n' + front_startup_code
+			front_startup_code = '\n' + dedent(front_startup_code)
 
 		front_view_path = view_static_path / "front_view_class.py"
 		front_view_path.write_text(

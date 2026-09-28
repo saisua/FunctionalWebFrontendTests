@@ -1,4 +1,5 @@
 from typing import Any, Self, Callable, Union
+from pathlib import Path
 import inspect
 
 try:
@@ -52,14 +53,14 @@ class Transition:
 		if self._owner is not None and isinstance(repl_cls, ViewForwardRef):
 			repl_cls = ViewForwardRef.try_resolve(repl_cls, self._owner)
 
-		print(f"Transition {self}: {self.states}")
+		# print(f"Transition {self}: {self.states}")
 
 		updated_states = dict()
 		found_cls_from = False
 		for from_state, (to_state, trans_type) in self.states.items():
 			updated = False
 			if from_state is cls:
-				print(f"#F Found generic 'from' cls [{from_state} -> {repl_cls}]({self._owner})")
+				# print(f"#F Found generic 'from' cls [{from_state} -> {repl_cls}]({self._owner})")
 				found_cls_from = True
 				updated = True
 				from_state = repl_cls
@@ -68,7 +69,7 @@ class Transition:
 				from_state = ViewForwardRef.try_resolve(from_state, self._owner)
 
 			if to_state is cls:
-				print(f"#T Replaced generic 'to {to_state}' to {repl_cls} [{from_state} -> {repl_cls}]({self._owner})")
+				# print(f"#T Replaced generic 'to {to_state}' to {repl_cls} [{from_state} -> {repl_cls}]({self._owner})")
 				updated = True
 				to_state = repl_cls
 			elif isinstance(to_state, ViewForwardRef):
@@ -126,8 +127,9 @@ class Transition:
 			)
 			if next_state is None:
 				return
+
 			step = "on"
-			await self._call_on(
+			in_new_page = await self._call_on(
 				state_machine,
 				*args,
 				curr_state=curr_state,
@@ -135,6 +137,9 @@ class Transition:
 				transition_type=transition_type,
 				**kwargs
 			)
+			if in_new_page is True:
+				return
+
 			step = "after"
 			await self._call_after(
 				state_machine,
@@ -270,10 +275,23 @@ class Transition:
 			# 	print(next_state, next_state._on_fn)
 			# 	print(f" Next state {next_state} has no on")
 
+		trans_type, *modifiers = transition_type.rstrip('] ').split('[', 1)
 		if transition_type == 'outside':
 			try:
+				if len(modifiers):
+					modifiers = modifiers[0]
+					if '1' in modifiers:
+						from pyscript import fetch
+						page_name = Path(next_state).name
+						exec(
+							await fetch(f"{PAGE_STATIC}/to_{page_name}.py"),
+							globals(),
+						)
+						return True
+
 				from pyscript import window  # pyright: ignore[reportMissingImports]
 				window.location.href = next_state
+				return True
 			except ImportError:
 				pass
 

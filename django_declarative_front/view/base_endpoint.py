@@ -53,6 +53,8 @@ def gen_base_index(
 
 	page = Page()
 
+	page_name = getattr(cls.__base__, '__name__', 'Unnamed')
+
 	with page.head:
 		page.stag("meta", charset="utf-8")
 		page.stag(
@@ -60,7 +62,12 @@ def gen_base_index(
 			name="viewport",
 			content="width=device-width,initial-scale=1",
 		)
-		page.tag("title").text(getattr(cls.__base__, '__name__', 'Unnamed'))
+		page.tag("title").text(page_name)
+
+		page.tag(
+			"script",
+			type="py",
+		).text(f"from pathlib import Path\nPAGE_STATIC=Path('{STATIC_URL}/generated_pages/{page_name}/')")
 
 		page.stag(
 			"script",
