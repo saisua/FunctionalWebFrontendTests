@@ -4,6 +4,11 @@ from collections import deque
 import asyncio
 import inspect
 
+try:
+	from django_declarative_front.static.state_machine.forward_ref import ViewForwardRef
+except ImportError:
+	pass
+
 
 type callable_t = Callable[..., Any] | Callable[..., Awaitable[Any]]
 type task_t = callable_t | Workflow

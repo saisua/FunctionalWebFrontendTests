@@ -49,18 +49,40 @@ class Transition:
 		self._owner = owner
 
 	def _update_cls_ref(self, cls: type, repl_cls: type) -> Self:
-		if cls in self.states and (cls_from_tos := self.states.pop(cls)):
-			if self._owner is not None:
-				cls_from_tos = ViewForwardRef.try_resolve(cls_from_tos, self._owner)
-			# print(f"Replaced from {cls} to {repl_cls} ({cls_from_tos} in {self._owner})")
-			self.states[repl_cls] = cls_from_tos
+		if self._owner is not None and isinstance(repl_cls, ViewForwardRef):
+			repl_cls = ViewForwardRef.try_resolve(repl_cls, self._owner)
 
+		print(f"Transition {self}: {self.states}")
+
+		updated_states = dict()
+		found_cls_from = False
 		for from_state, (to_state, trans_type) in self.states.items():
+			updated = False
+			if from_state is cls:
+				print(f"#F Found generic 'from' cls [{from_state} -> {repl_cls}]({self._owner})")
+				found_cls_from = True
+				updated = True
+				from_state = repl_cls
+			elif isinstance(from_state, ViewForwardRef):
+				updated = True
+				from_state = ViewForwardRef.try_resolve(from_state, self._owner)
+
 			if to_state is cls:
-				if self._owner is not None:
-					repl_cls = ViewForwardRef.try_resolve(repl_cls, self._owner)
-				# print(f"Replaced to {to_state} to {repl_cls} (from {from_state} in {self._owner})")
-				self.states[from_state] = (repl_cls, trans_type)
+				print(f"#T Replaced generic 'to {to_state}' to {repl_cls} [{from_state} -> {repl_cls}]({self._owner})")
+				updated = True
+				to_state = repl_cls
+			elif isinstance(to_state, ViewForwardRef):
+				updated = True
+				to_state = ViewForwardRef.try_resolve(to_state, self._owner)
+
+			if not updated:
+				continue
+			
+			updated_states[from_state] = (to_state, trans_type)
+
+		if found_cls_from:
+			self.states.pop(cls)
+		self.states.update(updated_states)
 
 		return self
 
@@ -92,7 +114,49 @@ class Transition:
 		self._raise |= transition._raise
 		return self | transition
 
-	async def __call__(self, state_machine: 'StateMachine' = None, /, *args: Any, **kwds: Any) -> Any:
+	async def __call__(self, state_machine, /, *args, **kwargs) -> Any:
+		curr_state = state_machine._current_state
+		next_state = None
+		step = "before"
+		try:
+			curr_state, next_state, transition_type = await self._call_before(
+				state_machine,
+				*args,
+				**kwargs
+			)
+			if next_state is None:
+				return
+			step = "on"
+			await self._call_on(
+				state_machine,
+				*args,
+				curr_state=curr_state,
+				next_state=next_state,
+				transition_type=transition_type,
+				**kwargs
+			)
+			step = "after"
+			await self._call_after(
+				state_machine,
+				*args,
+				curr_state=curr_state,
+				next_state=next_state,
+				transition_type=transition_type,
+				**kwargs
+			)
+
+		except Exception as e:
+			if self._fallback_fn is not None:
+				print(f" Transition {self} fallback at before")
+				self._fallback_fn(e)
+			if self._raise:
+				raise
+			print(f"Exception during {step!r} in transition from {curr_state} to {next_state}: {e}")
+			import traceback
+			traceback.print_exception(e)
+			return
+
+	async def _call_before(self, state_machine: 'StateMachine', /, *args: Any, **kwargs: Any) -> Any:
 		# print("Transition call", self, state_machine)
 		if state_machine is None:
 			# This is for type hinting reasons
@@ -103,8 +167,6 @@ class Transition:
 
 		updated_fwd = False
 
-		print(self.states)
-		print("Cstate", curr_state)
 		if isinstance(curr_state, ViewForwardRef):
 			updated_fwd = True
 			self.states.pop(curr_state)
@@ -116,7 +178,6 @@ class Transition:
 			if next_state is None:
 				next_state, transition_type = self.states.get(curr_state, (None, None))
 
-		print("Nstate", next_state)
 		if isinstance(next_state, ViewForwardRef):
 			updated_fwd = True
 			if next_state.owner is None:
@@ -128,25 +189,16 @@ class Transition:
 			self.states[curr_state] = (next_state, transition_type)
 
 		if self._before_fn is not None:
-			try:
-				if inspect.iscoroutine(
-					coro := self._before_fn(
-						state_machine,
-						curr_state,
-						next_state,
-						transition_type,
-					)
-				):
-					await coro
-				# print(f" Run transition {self} before")
-			except Exception as e:
-				if self._fallback_fn is not None:
-					print(f" Transition {self} fallback at before")
-					return self._fallback_fn(e)
-				if self._raise:
-					raise
-				print(f"Exception before transition from {curr_state} to {next_state}: {e}")
-				return
+			if inspect.iscoroutine(
+				coro := self._before_fn(
+					state_machine,
+					curr_state,
+					next_state,
+					transition_type,
+				)
+			):
+				await coro
+			# print(f" Run transition {self} before")
 		# else:
 		# 	print(f" Transition {self} has no before")
 
@@ -155,25 +207,16 @@ class Transition:
 			ns_before_fn = next_state._before_fn.get(next_state)
 
 			if ns_before_fn is not None:
-				try:
-					if inspect.iscoroutine(
-						coro := ns_before_fn(
-							state_machine,
-							curr_state,
-							next_state,
-							transition_type,
-						)
-					):
-						await coro
-					# print(f" Run next state {next_state} before")
-				except Exception as e:
-					if self._fallback_fn is not None:
-						print(f" Next state {next_state} fallback at before")
-						return self._fallback_fn(e)
-					if self._raise:
-						raise
-					print(f"Exception before transition from {curr_state} to {next_state}: {e}")
-					return
+				if inspect.iscoroutine(
+					coro := ns_before_fn(
+						state_machine,
+						curr_state,
+						next_state,
+						transition_type,
+					)
+				):
+					await coro
+				# print(f" Run next state {next_state} before")
 			# else:
 			# 	print(f" Next state {next_state} has no before")
 
@@ -184,11 +227,22 @@ class Transition:
 				show_notification(f"Invalid transition from {curr_state}")
 				print(curr_state, self.states)
 				if self._fallback_fn is not None:
-					return self._fallback_fn(RuntimeError(f'Invalid transition from {curr_state}'))
+					self._fallback_fn(RuntimeError(f'Invalid transition from {curr_state}'))
 				if self._raise:
 					raise RuntimeError(f"Invalid transition from {curr_state} ({state_machine})")
-			return
+			return None, None, None
+		return curr_state, next_state, transition_type
 
+	async def _call_on(
+		self,
+		state_machine: 'StateMachine',
+		/,
+		curr_state,
+		next_state,
+		transition_type,
+		*args: Any,
+		**kwargs: Any
+	) -> Any:
 		# TODO: Fix this BS
 		type(state_machine)._current_state = next_state
 		state_machine._current_state = next_state
@@ -196,41 +250,22 @@ class Transition:
 		print(f"{curr_state} -> {next_state} ({state_machine._current_state}, {id(state_machine)})")
 
 		if self._on_fn is not None:
-			try:
-				if inspect.iscoroutine(
-					coro := self._on_fn(state_machine, curr_state, next_state, transition_type)
-				):
-					await coro
-				# print(f" Run transition {self} on")
-			except Exception as e:
-				print(f" Transition {self} fallback at on")
-				if self._fallback_fn is not None:
-					return self._fallback_fn(e)
-				if self._raise:
-					raise
-				print(f"Exception on transition from {curr_state} to {next_state}: {e}")
-				return
+			if inspect.iscoroutine(
+				coro := self._on_fn(state_machine, curr_state, next_state, transition_type)
+			):
+				await coro
 		# else:
 		# 	print(f" Transition {self} has no on")
 
+		valid_next_state: bool = next_state is not None and not isinstance(next_state, ViewForwardRef)
 		if valid_next_state:
 			ns_on_fn = next_state._on_fn.get(next_state)
 
 			if ns_on_fn is not None:
-				try:
-					if inspect.iscoroutine(
-						coro := ns_on_fn(state_machine, curr_state, next_state, transition_type)
-					):
-						await coro
-					# print(f" Run next state {next_state} on")
-				except Exception as e:
-					if self._fallback_fn is not None:
-						print(f" Next state {next_state} fallback at on")
-						return self._fallback_fn(e)
-					if self._raise:
-						raise
-					print(f"Exception on transition from {curr_state} to {next_state}: {e}")
-					return
+				if inspect.iscoroutine(
+					coro := ns_on_fn(state_machine, curr_state, next_state, transition_type)
+				):
+					await coro
 			# else:
 			# 	print(next_state, next_state._on_fn)
 			# 	print(f" Next state {next_state} has no on")
@@ -242,10 +277,38 @@ class Transition:
 			except ImportError:
 				pass
 
+
+	async def _call_after(
+		self,
+		state_machine: 'StateMachine',
+		/,
+		curr_state,
+		next_state,
+		transition_type,
+		*args: Any,
+		**kwargs: Any
+	) -> Any:
 		if self._after_fn is not None:
-			try:
+			if inspect.iscoroutine(
+				coro := self._after_fn(
+					state_machine,
+					curr_state,
+					next_state,
+					transition_type
+				)
+			):
+				await coro
+			# print(f" Run transition {self} after")
+		# else:
+		# 	print(f" Transition {self} has no after")
+
+		valid_next_state: bool = next_state is not None and not isinstance(next_state, ViewForwardRef)
+		if valid_next_state:
+			ns_after_fn = next_state._after_fn.get(next_state)
+
+			if ns_after_fn is not None:
 				if inspect.iscoroutine(
-					coro := self._after_fn(
+					coro := ns_after_fn(
 						state_machine,
 						curr_state,
 						next_state,
@@ -253,41 +316,7 @@ class Transition:
 					)
 				):
 					await coro
-				# print(f" Run transition {self} after")
-			except Exception as e:
-				if self._fallback_fn:
-					print(f" Transition {self} fallback at after")
-					self._fallback_fn(e)
-				if self._raise:
-					raise
-				print(f"Exception after transition from {curr_state} to {next_state}: {e}")
-				return
-		# else:
-		# 	print(f" Transition {self} has no after")
-
-		if valid_next_state:
-			ns_after_fn = next_state._after_fn.get(next_state)
-
-			if ns_after_fn is not None:
-				try:
-					if inspect.iscoroutine(
-						coro := ns_after_fn(
-							state_machine,
-							curr_state,
-							next_state,
-							transition_type
-						)
-					):
-						await coro
-					# print(f" Run next state {next_state} after")
-				except Exception as e:
-					if self._fallback_fn:
-						print(f" Next state {next_state} fallback at after")
-						self._fallback_fn(e)
-					if self._raise:
-						raise
-					print(f"Exception after transition from {curr_state} to {next_state}: {e}")
-					return
+				# print(f" Run next state {next_state} after")
 			# else:
 			# 	print(f" Next state {next_state} has no after")
 

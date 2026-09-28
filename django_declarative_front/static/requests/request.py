@@ -28,7 +28,7 @@ class Request:
 	_body: str | None = None
 	_headers: dict[str, str] | None = None
 
-	_transition: str | Callable | None = None
+	_transition: ViewForwardRef | Callable | None = None
 	_callback: Callable | None = None
 	_fallback: Callable | None = None
 
@@ -73,28 +73,37 @@ class Request:
 	@property
 	def transition(self):
 		if isinstance(self._transition, ViewForwardRef):
-			self._transition = ViewForwardRef.try_resolve(
+			transition = ViewForwardRef.try_resolve(
 				self._transition,
 				self._owner
 			)
+			if not self._transition._cache_resolution:
+				return transition
+			self._transition = transition
 		return self._transition
 
 	@property
 	def callback(self):
 		if isinstance(self._callback, ViewForwardRef):
-			self._callback = ViewForwardRef.try_resolve(
+			callback = ViewForwardRef.try_resolve(
 				self._callback,
 				self._owner
 			)
+			if not self._callback._cache_resolution:
+				return callback
+			self._callback = callback
 		return self._callback
 
 	@property
 	def fallback(self):
 		if isinstance(self._fallback, ViewForwardRef):
-			self._fallback = ViewForwardRef.try_resolve(
+			fallback = ViewForwardRef.try_resolve(
 				self._fallback,
 				self._owner
 			)
+			if not self._fallback._cache_resolution:
+				return fallback
+			self._fallback = fallback
 		return self._fallback
 
 	def __repr__(self) -> str:
@@ -132,6 +141,10 @@ class Request:
 	async def _future(data):
 		return data
 
+	@staticmethod
+	async def _anext(gen):
+		return await anext(gen)
+
 	def send(self, *args, **kwargs):
 		# TODO make async
 		assert self.fallback is not None or 'fallback' in kwargs, f"No fallback provided in {self}"
@@ -143,7 +156,9 @@ class Request:
 		assert req.fallback is not None
 		assert req.transition is not None
 
-		asyncio.run(req.transition(*args))
+		trans = ViewForwardRef.try_resolve(req.transition)(*args, yield_parts=True)
+		asyncio.run(self._anext(trans))  # Before
+		asyncio.run(self._anext(trans))  # On
 
 		try:
 			result = req._send_pyodide()
@@ -151,6 +166,8 @@ class Request:
 			raise NotImplementedError("TODO non-pyodide for back")
 		except Exception as e:
 			return req.fallback(*args, e)
+
+		asyncio.run(self._anext(trans))  # After
 
 		if req.callback is not None:
 			print("callback to ", req.callback)

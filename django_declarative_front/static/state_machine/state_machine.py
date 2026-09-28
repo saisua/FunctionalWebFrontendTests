@@ -12,19 +12,10 @@ except ImportError:
 
 
 class MetaState(type):
-	__outer_owner__: type
-
-	def __new__(cls, name, bases, namespace):
-		scls = super().__new__(cls, name, bases, namespace)
-		for value in namespace.values():
-			if isinstance(value, type):
-				value.__outer_owner__ = scls
-		return scls
+	__outer_owner__: type | None = None
 
 
 class MetaStateMachine(MetaState):
-	_obj_references: list[object] = list()
-
 	def __getattr__(self, name: str):
 		if name.startswith('_'):
 			raise AttributeError(f"Attribute {name!r} does not exist in {self}")
@@ -38,9 +29,9 @@ class StateMachine(metaclass=MetaStateMachine):
 		initial: bool = False
 		final: bool = False
 
-		_before_fn: dict[type[State], Callable] = dict()
-		_on_fn: dict[type[State], Callable] = dict()
-		_after_fn: dict[type[State], Callable] = dict()
+		_before_fn: dict[type[State], Callable | ViewForwardRef] = dict()
+		_on_fn: dict[type[State], Callable | ViewForwardRef] = dict()
+		_after_fn: dict[type[State], Callable | ViewForwardRef] = dict()
 
 		def __init__(self) -> None:
 			print("State init", self)
@@ -113,6 +104,8 @@ class StateMachine(metaclass=MetaStateMachine):
 
 		@classmethod
 		def to(cls, other: type[State] | ViewForwardRef, *, transition_type: str = 'call'):
+			if isinstance(other, ViewForwardRef) and other.owner is None:
+				other.owner = cls.__outer_owner__
 			return Transition(cls, other, transition_type)
 
 		@classmethod
@@ -177,25 +170,17 @@ class StateMachine(metaclass=MetaStateMachine):
 	_current_state: type[State]
 	__initial_state: type[State]
 
+	_obj_ref: StateMachine
+
 	def __init__(self) -> None:
-		self._obj_references.append(self)
-		try:
-			import pyodide  # TODO: Move to lazy import
+		print("Init")
+		type(self)._obj_ref = self
 
-			for attr in type(self).__annotations__.keys():
-				val = getattr(self, attr)
-				if isinstance(val, Transition):
-					def _attr_transition(
-						self,
-						*args,
-						__trans_obj: Transition = val,
-						**kwargs
-					):
-						return __trans_obj(self, *args, **kwargs)
-
-					setattr(type(self), attr, _attr_transition)
-		except ImportError:
-			pass
+		for attr, value in inspect.getmembers(self):
+			if attr.startswith('__'):
+				continue
+			if hasattr(value, '__outer_owner__'):
+				value.__outer_owner__ = self
 
 	def _reset_sm_state(self):
 		self._current_state = self.__initial_state
@@ -208,10 +193,12 @@ class StateMachine(metaclass=MetaStateMachine):
 		for attr, value in inspect.getmembers(cls):
 			if attr.startswith('__'):
 				continue
+			if hasattr(value, '__outer_owner__'):
+				value.__outer_owner__ = cls
 			if isinstance(value, type) and StateMachine.State in value.__bases__:
 				found_state = True
 				if value.initial:
-					if initial_state is not None and initial_state != value:
+					if initial_state is not None and initial_state is not value:
 						raise ValueError(
 							"There can only be a single initial state. "
 							f"Found: {initial_state} and {value}"
@@ -274,7 +261,9 @@ class StateMachine(metaclass=MetaStateMachine):
 
 		print(f"Trying for {name} in _current_state")
 		curr_state = object.__getattribute__(self, '_current_state')
-		return getattr(curr_state, name)
+		value = getattr(curr_state, name)
+		value._cache_resolution = False
+		return value
 
 
 State = StateMachine.State

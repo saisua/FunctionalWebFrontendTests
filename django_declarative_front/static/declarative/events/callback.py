@@ -3,6 +3,7 @@ from typing import Callable, Iterable, ParamSpec, Awaitable, cast
 from functools import partial
 from asyncio import TaskGroup
 from copy import copy
+from itertools import chain
 
 try:
 	from django_declarative_front.static.declarative.functions import pure
