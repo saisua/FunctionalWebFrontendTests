@@ -1,8 +1,8 @@
 from django.urls import path
 
-from fun_django_web.pages.index import render as index_render
+from fun_django_web.pages.index import view as index_view
 
 
 urlpatterns = [
-	path("", index_render, name="index"),
+	*index_view.get_urls(),
 ]

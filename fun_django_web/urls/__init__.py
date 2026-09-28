@@ -8,5 +8,6 @@ from .backend import urlpatterns as backend_urlpatterns
 urlpatterns = [
 	path('admin/', admin.site.urls),
 	path('api/', include(backend_urlpatterns)),
+	# path('api/', include('django_declarative_front.urls')),
 	*frontend_urlpatterns,
 ]

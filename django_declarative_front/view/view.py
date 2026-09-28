@@ -15,11 +15,11 @@ from .rpc_pending import add_rpc_pending
 from .build_resources import gen_build_resources
 from .base_endpoint import gen_base_index
 
-from django_declarative_front.state_machine.state_machine import StateMachine
-from django_declarative_front.utils.docstr import Doc
+from django_declarative_front.static.state_machine.state_machine import StateMachine
+from django_declarative_front.static.utils.docstr import Doc
 
 
-BASE_DIR = Path(settings.BASE_DIR)
+GENERATED_DIR = Path(settings.BASE_DIR) / "generated"
 
 
 def backend(fn: Callable):
@@ -54,9 +54,7 @@ class BaseView(ABC, StateMachine, metaclass=BaseViewMeta):
 		if cls is not None:
 			if cls._cached_index_content is None:
 				cls._cached_index_content = Path(
-					BASE_DIR,
-					"django_declarative_front",
-					"generated",
+					GENERATED_DIR,
 					cls._endpoint,
 					"index.html"
 				).read_text()
@@ -90,13 +88,13 @@ class BaseView(ABC, StateMachine, metaclass=BaseViewMeta):
 		super().__init_subclass__()
 
 		view_endpoint = cls.get_endpoint()
-		cls._endpoint_refs[str(view_endpoint).strip(' /')] = cls
+		clean_vendpoint = str(view_endpoint).strip(' /')
+		cls._endpoint_refs[clean_vendpoint] = cls
+		path_endpoint = view_endpoint if clean_vendpoint else Path()
 
 		if settings.DEBUG or not Path(
-			BASE_DIR,
-			"django_declarative_front",
-			"generated",
-			view_endpoint,
+			GENERATED_DIR,
+			path_endpoint,
 			"index.html"
 		).exists():
 			base_cls = cls
@@ -214,7 +212,8 @@ class BaseView(ABC, StateMachine, metaclass=BaseViewMeta):
 
 			print(base_cls, "init subclass")
 
-			view_static_path: Path = BASE_DIR / "django_declarative_front" / "generated" / cls._endpoint
+			view_static_path: Path = GENERATED_DIR / path_endpoint
+
 			if not view_static_path.exists():
 				view_static_path.mkdir(parents=True)
 				(view_static_path / '.gitignore').write_text("*")

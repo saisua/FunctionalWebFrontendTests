@@ -11,5 +11,5 @@ def render(page):
 				).text("Small app subtitle")
 
 		with page.tag("div", klass="header-actions"):
-			page.tag("button", klass="btn", title="Notifications").text("🔔")
-			page.tag("button", klass="btn", title="Account").text("👤")
+			page.tag("button", klass="btn", title="Notifications").text("Notifications")
+			page.tag("button", klass="btn", title="Account").text("Accout")

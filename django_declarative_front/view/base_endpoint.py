@@ -7,7 +7,7 @@ from django_declarative_front.page.page import Page
 
 
 STATIC_URL = Path(settings.STATIC_URL)
-RESOURCES_DIR = Path(settings.BASE_DIR) / "django_declarative_front" / "generated"
+RESOURCES_DIR = Path(settings.BASE_DIR) / "generated"
 RESOURCES_DIR.mkdir(parents=True, exist_ok=True)
 
 resources_gitignore = RESOURCES_DIR / '.gitignore'
@@ -144,8 +144,10 @@ def gen_base_index(
 					)
 				)
 
+	endpoint = cls._endpoint if str(cls._endpoint).strip(' /') else Path()
+
 	page_src: str = page.render()
-	(RESOURCES_DIR / cls._endpoint / "index.html").write_text(
+	(RESOURCES_DIR / endpoint / "index.html").write_text(
 		page_src
 	)
 

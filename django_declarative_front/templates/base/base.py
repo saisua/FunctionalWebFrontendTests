@@ -18,7 +18,7 @@ class PageWithBasicStructure(Page):
 def render(
 	*args,
 	title: str = "MyApp",
-	python_packages: Iterable[str],
+	python_packages: Iterable[str] = tuple(),
 	icon: str = "{% static 'admin/img/icon-debug-dark.svg' %}",
 	**kwargs
 ) -> PageWithBasicStructure:
@@ -27,19 +27,16 @@ def render(
 	page._template_prefixes.append("{% load static %}")
 	page.add_pyscript_file(
 		'state_machine/state_machine.py',
-		static=True,
 		target_path='state_machine.py',
 		run=False,
 	)
 	page.add_pyscript_file(
 		'workflows/workflows.py',
-		static=True,
 		target_path='workflows.py',
 		run=False,
 	)
 	page.add_pyscript_file(
 		'notifications/notifications.py',
-		static=True,
 		target_path='notifications.py',
 		run=False,
 	)

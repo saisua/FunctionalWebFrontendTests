@@ -1,3 +1,1 @@
-from .index import render
-
-__all__ = ["render"]
+from .index import view

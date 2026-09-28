@@ -2,7 +2,7 @@ from typing import Any, cast
 
 from django_declarative_front.templates.base.base import Page
 
-from django_declarative_front.utils.docstr import Doc
+from django_declarative_front.static.utils.docstr import Doc
 
 
 @Doc("""

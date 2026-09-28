@@ -32,7 +32,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        from django_declarative_front.utils.view_graph import build_and_write
+        from django_declarative_front.static.utils.view_graph import build_and_write
 
         base_dir = Path(settings.BASE_DIR)
         out_path = options['out'] or base_dir / 'generated' / 'graphs' / 'site.svg'

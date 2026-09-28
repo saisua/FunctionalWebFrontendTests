@@ -125,30 +125,6 @@ class view(BaseView):
 		):
 			print("Failed time request")
 
-	# enable: Transition = (
-	# 	Disabled.to(Enabled)
-	# 	| Saving.to(Enabled)  # noqa: W503
-	# )
-	# disable: Transition = (
-	# 	Enabled.to(Disabled)
-	# )
-	# start_saving: Transition = (
-	# 	Enabled.to(Saving)
-	# )
-	# fail: Transition = (
-	# 	Saving.to(Failure)
-	# 	# TODO: Ideally we could go from failure
-	# 	| Enabled.to(Failure)  # noqa: W503
-	# )
-	# reset: Transition = (
-	# 	Failure.to(Disabled)
-	# 	| Enabled.to(Disabled)  # noqa: W503
-	# 	| Disabled.to_itself()  # noqa: W503
-	# )
-	# leave: Transition = (
-	# 	Disabled.to_outside("/")
-	# )
-
 	increment_event = Callback.click(Meta._page.increment_btn.id).do(BaseView.increment)
 	decrement_event = Callback.click(Meta._page.decrement_btn.id).do(BaseView.decrement)
 	enable_event = Callback.click(Meta._page.enable_btn.id).do(BaseView.enable)

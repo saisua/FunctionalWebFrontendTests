@@ -15,11 +15,16 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 
 from pathlib import Path
-
 import os
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
+from dotenv import load_dotenv
+
+# from django_declarative_front.config import STATICFILES_DIRS as ddf_staticfiles
+
+# Load environment variables from .env file
+load_dotenv()
+
+BASE_DIR = Path(__file__).resolve().parent
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -42,6 +47,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_declarative_front',
 ]
 
 MIDDLEWARE = [
@@ -124,24 +130,18 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / "fun_django_web" / "static_collected"
+STATIC_ROOT = BASE_DIR / "static_collected"
 STATIC_ROOT.mkdir(parents=True, exist_ok=True)
 
 static_gitignore = STATIC_ROOT / ".gitignore"
 if not static_gitignore.exists():
     static_gitignore.write_text('*')
 
-(BASE_DIR / "fun_django_web" / "generated").mkdir(exist_ok=True)
+(BASE_DIR / "generated").mkdir(exist_ok=True)
+
 
 STATICFILES_DIRS = list(dict(
-    state_machine=BASE_DIR / "fun_django_web" / "src" / "state_machine",
-    requests=BASE_DIR / "fun_django_web" / "src" / "requests",
-    workflows=BASE_DIR / "fun_django_web" / "src" / "workflows",
-    notifications=BASE_DIR / "fun_django_web" / "src" / "notifications",
-    reactivity=BASE_DIR / "fun_django_web" / "src" / "reactivity",
-    declarative=BASE_DIR / "fun_django_web" / "src" / "declarative",
-	generated_pages=BASE_DIR / "fun_django_web" / "generated",
-    utils=BASE_DIR / "utils",
+	generated_pages=BASE_DIR / "generated",
 	libs=BASE_DIR / "libs",
 ).items())
 

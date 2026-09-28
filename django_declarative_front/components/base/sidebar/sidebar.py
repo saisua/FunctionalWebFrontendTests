@@ -2,17 +2,9 @@ import os
 
 
 def render(page):
-	with page.head:
-		page.add_pyscript_file(
-			'fun_django_web/components/base/sidebar/sidebar.pyscript.py',
-			target_path='sidebar.py',
-			run=True,
-		)
-
 	with page.sidebar:
 		with page.tag("nav"):
 			with page.tag("a", href="/", klass="nav-link"):
-				page.tag("span", klass="nav-icon").text("🏠")
 				page.tag("span", klass="nav-text").text("Home")
 
 		with page.tag(
@@ -36,4 +28,4 @@ def render(page):
 			page.tag(
 				"small",
 				klass="muted"
-			).text(f"v{os.environ.get('VERSION')}")
+			).text(f"v{os.environ.get('VERSION', '0.1a')}")

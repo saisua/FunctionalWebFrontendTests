@@ -1,35 +1,31 @@
-"""
-django_declarative_front - A Python web frontend framework with declarative syntax,
-state machines and workflow DAGs.
-"""
+from django.core.exceptions import ImproperlyConfigured
+
 
 __version__ = "0.1.0"
 __author__ = "WebFunReflex Contributors"
 
-# Core classes - these are the most commonly used
-from .view import BaseView, backend
-from .state_machine.state_machine import State
-from .declarative.fact import Fact
-from .declarative.events import Callback
-from .requests.request import Request
-from .utils.docstr import Doc
 
-# CSS classes
+from .view import BaseView, backend
+
+
 from .css.serializer import SerializerCSS
 from .css.modules.display.flex import FlexCSS
 from .css.components.notification import NotificationCSS
 from .css.components.button import ButtonCSS
 
-# Pages and components
 from .templates.base import render as base_render
 from .components.table.simple_table import simple_table
 
-# Notifications
-from .notifications.notifications import show_notification
+from .static.state_machine.state_machine import State
+from .static.declarative.fact import Fact
+from .static.declarative.events import Callback
+from .static.notifications.notifications import show_notification
+from .static.requests.request import Request
+from .static.utils.docstr import Doc
 
-# Export all for backward compatibility
+
+
 __all__ = [
-    # Core
     'BaseView',
     'backend',
     'State',
@@ -37,17 +33,18 @@ __all__ = [
     'Callback',
     'Request',
     'Doc',
-    
-    # CSS
     'SerializerCSS',
     'FlexCSS',
     'NotificationCSS',
     'ButtonCSS',
-    
-    # Pages and components
     'base_render',
     'simple_table',
-    
-    # Notifications
     'show_notification',
+    'declarative',
+	'notifications',
+	'reactivity',
+	'requests',
+	'state_machine',
+	'utils',
+	'workflows',
 ]

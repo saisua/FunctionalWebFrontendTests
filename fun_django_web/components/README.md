@@ -1,1 +1,0 @@
-Here it would be implemented all frontend yattag + css components to be reused

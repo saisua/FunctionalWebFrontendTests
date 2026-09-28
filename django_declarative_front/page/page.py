@@ -162,16 +162,12 @@ class Page:
 		file_path: str,
 		*,
 		target_path: str = '',
-		static: bool = False,
 		run: bool = False,
 	) -> None:
 		if logger.isEnabledFor(logging.DEBUG):
 			logger.debug(f" Page add_pyscript_file {file_path} {target_path}")
 
-		if static:
-			file_path = f"/{settings.STATIC_URL.strip('/')}/{file_path.lstrip('/')}"
-		else:
-			file_path = f"/api/pyscript/get_file?path={file_path}"
+		file_path = f"/{settings.STATIC_URL.strip('/')}/{file_path.lstrip('/')}"
 
 		if run:
 			self.stag("script", type="py", src=file_path)

@@ -6,11 +6,16 @@ import re
 from textwrap import dedent
 from dataclasses import dataclass, field
 
+from django.conf import settings
+
 from django_declarative_front.page.page import Page
-from django_declarative_front.state_machine.state_machine import StateMachine
+# from django_declarative_front.static.state_machine.state_machine import StateMachine
 
 
 _page_re = re.compile(r"(\W|^)((?:Meta\.)?_page.\w+(?:\.\w+)*)")
+
+
+BASE_DIR = settings.BASE_DIR
 
 
 @dataclass
@@ -77,7 +82,7 @@ def gen_build_resources(
 		if not isinstance(stylesheets, (list, tuple, set)):
 			stylesheets = [stylesheets]
 
-		stylesheets_base_path = Path("django_declarative_front", "generated").absolute()
+		stylesheets_base_path = Path(BASE_DIR, "generated").absolute()
 		sheet_url_dict = dict()
 		sheet_output_paths = None
 		for stylesheet in stylesheets:

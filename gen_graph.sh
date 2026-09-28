@@ -1,0 +1,1 @@
+uv run utils/view_graph.py
