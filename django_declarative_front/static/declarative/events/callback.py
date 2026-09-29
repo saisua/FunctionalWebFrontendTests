@@ -30,8 +30,6 @@ class Callback(Workflow):
 	_selector: str | None = None
 	event: str
 
-	owner: object | None = None
-
 	effects: dict[int, tuple[
 		list[Callable[[object | ViewForwardRef, object | ViewForwardRef], bool]],
 		list[Workflow | WorkflowGroup | Transition | ViewForwardRef]
@@ -171,7 +169,7 @@ class Callback(Workflow):
 
 			async with TaskGroup() as tg:
 				for actor in actors:
-					print("Actor", actor, self._owner)
+					print("Actor", actor, self._owner, 'in', self)
 					actor = ViewForwardRef.try_resolve(actor, self._owner)
 
 					if isinstance(actor, Transition):
@@ -234,15 +232,19 @@ class Callback(Workflow):
 		return fn
 
 	def __get__(self, instance, owner=None):
+		print(f"Get {self}, {instance=} {owner=}")
 		if owner is None:
 			return self
 
-		self.owner = owner
+		self._owner = owner
 
 		if not self._set_manager and self.fname is not None:
 			self.set_manager()
 
 		return self
+
+	def __repr__(self) -> str:
+		return f"<Callback {self.event} of {self._owner}>"
 
 	def __getstate__(self):
 		return object.__getstate__(self)
