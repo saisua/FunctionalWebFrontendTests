@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Callable, Any, Final
+from typing import Callable, Any, Final, Self
 from functools import partial
 import logging
 import json
@@ -55,6 +55,9 @@ class Page:
 		"from js import document",
 		"body = document.getElementsByTagName('body')[0]",
 		"parents = [body]",
+	]
+	_builder_diff_start: Final[list[str]] = [
+		"from js import document",
 	]
 	_builder_kwarg_replacements: Final[dict[str, str]] = {
 		'klass': 'class'
@@ -213,6 +216,11 @@ class Page:
 			logger.debug(f"#\n#\n#\nbuilder {self.html}\n#\n#\n#")
 		return self.html.builder()
 
+	def diff_builder(self, other: Page) -> list[str]:
+		if logger.isEnabledFor(logging.DEBUG):
+			logger.debug(f"#\n#\n#\nbuilder {self.html}\n#\n#\n#")
+		return self.html.diff_builder(other.html)
+
 	@property
 	def children(self) -> list[Page._LazyTag]:
 		return [self.html]
@@ -252,6 +260,34 @@ class Page:
 				logger.debug(f"LazyTag exit {self} -> {self._prev_tag}")
 			self.page._current_tag = self._prev_tag
 			self._prev_tag = None
+
+		def __eq__(self, value: object) -> bool:
+			if not isinstance(value, type(self)):
+				return False
+			return (
+				self.id == value.id and
+				self._args == value._args and
+				self._kwargs == value._kwargs
+			)
+
+		@property
+		def tag_name(self):
+			return self._args[0]
+
+		@property
+		def css_selector(self):
+			return f"{self._args[0]}[{' '.join(f'{key}={value!r}' for key, value in self._kwargs)}]"
+
+		@property
+		def path(self):
+			curr_tag: Page._LazyTag | None = self._prev_tag
+			path: list[Page._LazyTag] = [self]
+
+			while curr_tag is not None:
+				path.insert(0, curr_tag)
+				curr_tag = curr_tag._prev_tag
+
+			return path
 
 		def tag(self, *args, **kwargs) -> Page._LazyTag:
 			if logger.isEnabledFor(logging.DEBUG):
@@ -336,6 +372,115 @@ class Page:
 							raise NotImplementedError(child)
 
 				output.append("parents.pop(-1)")
+
+			return output
+
+		def diff_builder(
+			self,
+			other_tag: Self,
+			output: list | None = None,
+			*,
+			depth: int = 1,
+			path_str: str | None = None
+		) -> list[str]:
+			if path_str is None:
+				path_str = '>'.join(
+					tag.tag_name
+					for tag in self.path
+				)
+
+			if output is None:
+				output = Page._builder_diff_start.copy()
+				output.append(f"current_parent = document.querySelector('{path_str}')")
+				output.append("parents = [current_parent]")  # Prolly unnecessary to add curr_par
+				output.append("children_to_remove = list()")
+				output.append("from time import sleep")
+			# output.append(f"print(' '*{depth-1}, '{self.tag_name}')")
+			# output.append("sleep(1)")
+
+			pending_children: list[Page._LazyTag] = list()
+			seen_tag_names: dict[str, int] = dict()
+
+			mapped_children_index: int = 0
+			n_removed_children: int = 0
+			for other_child in other_tag.children:
+				if isinstance(other_child, partial):
+					output.append(
+						"if current_parent and current_parent.childElementCount == 0: "
+						f"current_parent.innerText = '{other_child.args[0]}'"
+					)
+					continue
+
+				other_tag_name = other_child.tag_name
+				for n_child, child in enumerate(self.children[mapped_children_index:], start=mapped_children_index):
+					if isinstance(child, partial):
+						continue
+					child_tag_name = child.tag_name
+
+					if other_tag_name == child_tag_name:
+						for skipped_child_n in range(mapped_children_index, n_child):
+							skipped_child_tag = self.children[skipped_child_n]
+							if isinstance(skipped_child_tag, partial):
+								continue
+							nth_child = seen_tag_names.setdefault(skipped_child_tag.tag_name, 1)
+							skip_child_qsel = f"{path_str}>{skipped_child_tag.tag_name}:nth-of-type({nth_child})"
+
+							# output.append(
+							# 	f"print(' '*{depth-1}, 'removed', document.querySelector('{skip_child_qsel}'))"
+							# )
+							output.append(f"document.querySelector('{skip_child_qsel}').remove()")
+							n_removed_children += 1
+
+						for pending_child in pending_children:
+							pending_child.builder(output, depth=depth+1)
+						pending_children.clear()
+
+						output.append("parents.append(current_parent)")
+
+						parent_path_str = f"{path_str}>{child_tag_name}"
+						nth_child = seen_tag_names.setdefault(child_tag_name, 1)
+						parent_path_str += f":nth-of-type({nth_child})"
+						seen_tag_names[child_tag_name] += 1
+
+						output.append(f"current_parent = document.querySelector('{parent_path_str}')")
+						# output.append(f"print(' '*{depth}, 'new abs parent', current_parent, '{parent_path_str}')")
+
+						for other_kw, other_val in other_child._kwargs.items():
+							if child._kwargs.get(other_kw) != other_val:
+								kwarg = Page._builder_kwarg_replacements.get(other_kw, other_kw)
+								output.append(f"current_parent.setAttribute('{kwarg}', '{other_val}')")
+						for child_kw in child._kwargs:
+							if child_kw not in other_child._kwargs:
+								output.append(f"current_parent.removeAttribute('{child_kw}')")
+
+						child.diff_builder(other_child, output, depth=depth+1, path_str=parent_path_str)
+
+						output.append("current_parent = parents.pop(-1)")
+
+						mapped_children_index = n_child + 1
+						break
+				else:
+					pending_children.append(other_child)
+
+			# output.append("sleep(1)")
+
+			for skipped_child_n in range(mapped_children_index, len(self.children)):
+				skipped_child_tag = self.children[skipped_child_n]
+				if isinstance(skipped_child_tag, partial):
+					continue
+
+				nth_child = seen_tag_names.setdefault(skipped_child_tag.tag_name, 1)
+				skip_child_qsel = f"{path_str}>{skipped_child_tag.tag_name}:nth-of-type({nth_child})"
+
+				# output.append(
+				# 	f"print(' '*{depth-1}, 'removed', document.querySelector('{skip_child_qsel}'))"
+				# )
+				output.append(f"document.querySelector('{skip_child_qsel}').remove()")
+
+				n_removed_children += 1
+			for pending_child in pending_children:
+				pending_child.builder(output, depth=depth+1)
+			pending_children.clear()
 
 			return output
 
