@@ -7,6 +7,8 @@ try:
 	from .forward_ref import ViewForwardRef
 
 	from django_declarative_front.static.workflows.workflows import Workflow
+
+	from django_declarative_front.static.declarative.events.callback import Callback
 except ImportError:
 	pass
 
@@ -44,6 +46,8 @@ class StateMachine(metaclass=MetaStateMachine):
 					continue
 				if not isinstance(member, Callable):
 					continue
+				elif isinstance(member, Callback) and member._owner is None:
+					member._owner = cls
 
 				run_before = getattr(member, '__before__', False)
 				run_on = getattr(member, '__on__', False)
@@ -103,7 +107,7 @@ class StateMachine(metaclass=MetaStateMachine):
 			self._after_fn[self] = aft_fn
 
 		@classmethod
-		def to(cls, other: type[State] | ViewForwardRef, *, transition_type: str = 'call'):
+		def to(cls, other: type[State] | ViewForwardRef | str, *, transition_type: str = 'call'):
 			if isinstance(other, ViewForwardRef) and other.owner is None:
 				other.owner = cls.__outer_owner__
 			return Transition(cls, other, transition_type)
@@ -113,13 +117,14 @@ class StateMachine(metaclass=MetaStateMachine):
 			return cls.to(cls)
 
 		@classmethod
-		def to_outside(cls, out_url: str, *, one_page: bool = False, preload: bool = True):
+		def to_outside(cls, out_url: str, *, one_page: str = '', preload: bool = True):
 			trans_type = "outside"
 			if one_page:
 				if preload:
 					trans_type += '[1p]'
 				else:
 					trans_type += '[1]'
+				trans_type += f'({one_page})'
 			return cls.to(out_url, transition_type=trans_type)
 
 		def __eq__(self, value: Self) -> bool:  # pyright: ignore[reportIncompatibleMethodOverride] # noqa: E501
@@ -214,6 +219,8 @@ class StateMachine(metaclass=MetaStateMachine):
 				for sub_attr, sub_value in inspect.getmembers(value):
 					if isinstance(sub_value, Transition):
 						transition_classes.setdefault(sub_attr, set()).add(value)
+					elif isinstance(sub_value, Callback) and sub_value._owner is None:
+						sub_value._owner = cls
 
 		if found_state:
 			if initial_state is None:

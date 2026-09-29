@@ -46,6 +46,19 @@ def gen_build_resources(
 	view_meta: list[str] = list()
 	view_meta_class: list[str] = []
 
+	if hasattr(cls, "_endpoint"):
+		view_endpoint = cls._endpoint
+		view_meta.append(f"_endpoint = {str(view_endpoint)!r}")
+	elif hasattr(meta_cls, "_endpoint"):
+		view_endpoint = meta_cls._endpoint
+		view_meta_class.append(f"_endpoint = {str(view_endpoint)!r}")
+	else:
+		raise ValueError("Missing _endpoint")
+
+	endpoint_depth = str(view_endpoint).strip('/ ').count('/')
+	# If e_depth == 0, gets .parent, if eq 1 gets .parent.parent ...
+	static_path = view_static_path.parents[endpoint_depth]
+
 	page: Page | None = None
 	_page_in_meta = False
 	if hasattr(cls, "_page"):
@@ -82,23 +95,48 @@ def gen_build_resources(
 				if to_state.startswith('http://') or to_state.startswith('https://'):
 					continue
 
-				trans_type, modifiers = trans_type.rstrip('] ').split('[', 1)
-				if '1' not in modifiers:
+				trans_type, *modifiers = trans_type.rstrip(')] ').split('[', 1)
+				if len(modifiers) == 0:
 					continue
 
-				to_state = Path(to_state)
-				if not to_state.exists():
-					if (BASE_DIR / to_state).exists():
-						to_state = BASE_DIR / to_state
+				modifiers, *onepage_file = modifiers[0].strip(']) ').split('(', 1)
+				if '1' not in modifiers:
+					continue
+				if len(onepage_file) == 0:
+					continue
+				onepage_file = Path(onepage_file[0])
+
+				# pending_path = view_static_path / "pending_diffs.txt"
+				# current_pending = pending_path.read_text().split('\n')
+				# endpoint = str(to_state).strip()
+				# with open(pending_path, 'a+') as f:
+				# 	if endpoint not in current_pending:
+				# 		f.write(endpoint + '\n')
+
+				# print(django.urls.resolve(endpoint))  # import loop
+
+				if onepage_file.exists():
+					module_path = str(onepage_file).replace('/', '.')
+				else:
+					if (BASE_DIR / onepage_file).exists():
+						onepage_file = BASE_DIR / onepage_file
+						module_path = str(onepage_file.relative_to(BASE_DIR.parent))
+					# elif  # TODO: Relative to project base
 					# elif  # TODO: Relative to cls
 					else:
-						raise ValueError(f"Not found to_outside one_page transition file {to_state}")
+						raise ValueError(
+							f"Not found to_outside one_page transition file {onepage_file}"
+						)
 
-				to_state_module_name = to_state.name
-				module_path = str(to_state.relative_to(BASE_DIR.parent)).replace('/', '.')
-				if module_path.endswith('.py'):
-					module_path = module_path[:-3]
-				module = importlib.import_module(module_path)
+				if to_state.strip('/ '):
+					onepage_module_name = to_state
+				else:
+					onepage_module_name = '__home'
+
+				module_import = module_path.lstrip('.').replace('/', '.')
+				if module_import.endswith('.py'):
+					module_import = module_import[:-3]
+				module = importlib.import_module(module_import)
 
 				for obj in vars(module).values():
 					if not isinstance(obj, type):
@@ -108,7 +146,7 @@ def gen_build_resources(
 						transition_view = obj
 						break
 				else:
-					raise ValueError(f"Not found BaseView class in to_outside one_page transition file {to_state}")
+					raise ValueError(f"Not found BaseView class in to_outside one_page transition file {onepage_file}")
 
 				transition_page: Page | None = None
 				if hasattr(transition_view, "_page"):
@@ -117,14 +155,23 @@ def gen_build_resources(
 					transition_page = transition_view.Meta._page
 
 				if transition_page is not None:
-					front_transition_path = view_static_path / f"to_{to_state_module_name}"
+					to_state_path = str(to_state).strip(' /')
+					if to_state_path:
+						to_state_path = Path(to_state_path)
+					else:
+						to_state_path = Path()
+
+					front_transition_path = (
+						static_path /
+						to_state_path /
+						f"from_{str(view_endpoint).strip(' /').replace('/', '__')}.py"
+					)
 					front_transition_path.write_text('\n'.join(
 						page.diff_builder(transition_page)
 					))
 					print(f"Generated page diff to {front_transition_path}")
 				else:
 					print(f"[Warning] transition to {to_state} has no _page")
-
 
 	stylesheets = None
 	_sheets_in_meta = False
@@ -134,7 +181,6 @@ def gen_build_resources(
 		stylesheets = meta_cls._stylesheets
 		_sheets_in_meta = True
 
-	static_folder = view_static_path.parent
 	if stylesheets is not None:
 		if not isinstance(stylesheets, (list, tuple, set)):
 			stylesheets = [stylesheets]
@@ -150,7 +196,7 @@ def gen_build_resources(
 					sheet_output_paths = [sheet_output_paths]
 
 				sheet_output_paths = [
-					static_folder / p
+					static_path / p
 					for p in sheet_output_paths
 				]
 			else:
@@ -186,15 +232,6 @@ def gen_build_resources(
 				f"\tfor name, url in {sheet_url_dict!r}.items()",
 				"}",
 			))
-
-	if hasattr(cls, "_endpoint"):
-		view_endpoint = cls._endpoint
-		view_meta.append(f"_endpoint = {str(view_endpoint)!r}")
-	elif hasattr(meta_cls, "_endpoint"):
-		view_endpoint = meta_cls._endpoint
-		view_meta_class.append(f"_endpoint = {str(view_endpoint)!r}")
-	else:
-		raise ValueError("Missing _endpoint")
 
 	if back_endpoints or back_attr_endpoints:
 		back_endpoints_src: str = '\n'.join((
@@ -260,7 +297,7 @@ def gen_build_resources(
 					break
 
 		elif (
-			isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and 
+			isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and
 			not inspect.isfunction(getattr(cls, node.name))
 		):
 			front_functions.append(ast.unparse(node))

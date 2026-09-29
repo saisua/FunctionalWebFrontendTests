@@ -214,9 +214,21 @@ class BaseView(ABC, StateMachine, metaclass=BaseViewMeta):
 
 			view_static_path: Path = GENERATED_DIR / path_endpoint
 
+			print(view_static_path)
+
 			if not view_static_path.exists():
 				view_static_path.mkdir(parents=True)
 				(view_static_path / '.gitignore').write_text("*")
+
+			if hasattr(cls, '_endpoint'):
+				endpoint = cls._endpoint
+			elif hasattr(cls, 'Meta') and hasattr(cls.Meta, '_endpoint'):
+				endpoint = cls.Meta._endpoint
+			else:
+				raise RuntimeError("No endpoint")
+
+			if not isinstance(endpoint, Path):
+				endpoint = Path(endpoint)
 
 			# Generate endpoints for all '_*' methods
 			# And add a wrapper that uses the current request as 'self'
@@ -231,7 +243,7 @@ class BaseView(ABC, StateMachine, metaclass=BaseViewMeta):
 
 				cls._gen_urls.append(
 					path(
-						str(cls._endpoint / name),
+						str(endpoint / name),
 						gen_method_endpoint(
 							UserSession,
 							back_fn,
@@ -249,7 +261,7 @@ class BaseView(ABC, StateMachine, metaclass=BaseViewMeta):
 				back_attr_endpoints.append(back_attr)
 				cls._gen_urls.append(
 					path(
-						str(cls._endpoint / back_attr),
+						str(endpoint / back_attr),
 						gen_attr_endpoint(cls, back_attr),
 					)
 				)

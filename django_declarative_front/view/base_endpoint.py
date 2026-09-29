@@ -53,7 +53,12 @@ def gen_base_index(
 
 	page = Page()
 
-	page_name = getattr(cls.__base__, '__name__', 'Unnamed')
+	if hasattr(cls, '_endpoint'):
+		page_endpoint = Path(str(cls._endpoint).strip('/ '))
+	elif hasattr(cls, 'Meta') and hasattr(cls.Meta, '_endpoint'):
+		page_endpoint = Path(str(cls.Meta._endpoint).strip('/ '))
+	else:
+		page_endpoint = Path("Unnamed")
 
 	with page.head:
 		page.stag("meta", charset="utf-8")
@@ -62,12 +67,15 @@ def gen_base_index(
 			name="viewport",
 			content="width=device-width,initial-scale=1",
 		)
-		page.tag("title").text(page_name)
+		page.tag("title").text(page_endpoint.name)
 
 		page.tag(
 			"script",
 			type="py",
-		).text(f"from pathlib import Path\nPAGE_STATIC=Path('{STATIC_URL}/generated_pages/{page_name}/')")
+		).text('\n'.join([
+			"from pathlib import Path",
+			f"PAGE_STATIC=Path('{STATIC_URL}/generated_pages/{page_endpoint}/')"
+		]))
 
 		page.stag(
 			"script",

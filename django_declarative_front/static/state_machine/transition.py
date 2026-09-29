@@ -11,7 +11,15 @@ try:
 except ImportError:
 	pass
 
-State_t = Union['StateMachine.State', ViewForwardRef]
+
+try:
+	CURRENT_PAGE_ENDPOINT = PAGE_STATIC.relative_to("/static/generated_pages/")
+except Exception:
+	pass
+
+
+# A state can be an URL when transition to outside
+State_t = Union['StateMachine.State', ViewForwardRef, str]
 
 
 class Transition:
@@ -78,7 +86,7 @@ class Transition:
 
 			if not updated:
 				continue
-			
+
 			updated_states[from_state] = (to_state, trans_type)
 
 		if found_cls_from:
@@ -207,7 +215,10 @@ class Transition:
 		# else:
 		# 	print(f" Transition {self} has no before")
 
-		valid_next_state: bool = next_state is not None and not isinstance(next_state, ViewForwardRef)
+		valid_next_state: bool = (
+			next_state is not None and
+			not isinstance(next_state, (ViewForwardRef, str))
+		)
 		if valid_next_state:
 			ns_before_fn = next_state._before_fn.get(next_state)
 
@@ -262,7 +273,10 @@ class Transition:
 		# else:
 		# 	print(f" Transition {self} has no on")
 
-		valid_next_state: bool = next_state is not None and not isinstance(next_state, ViewForwardRef)
+		valid_next_state: bool = (
+			next_state is not None and
+			not isinstance(next_state, (ViewForwardRef, str))
+		)
 		if valid_next_state:
 			ns_on_fn = next_state._on_fn.get(next_state)
 
@@ -275,16 +289,45 @@ class Transition:
 			# 	print(next_state, next_state._on_fn)
 			# 	print(f" Next state {next_state} has no on")
 
-		trans_type, *modifiers = transition_type.rstrip('] ').split('[', 1)
-		if transition_type == 'outside':
+		trans_type, *modifiers = transition_type.rstrip(']) ').split('[', 1)
+		if trans_type == 'outside':
 			try:
 				if len(modifiers):
 					modifiers = modifiers[0]
 					if '1' in modifiers:
 						from pyscript import fetch
-						page_name = Path(next_state).name
+
+						to_path = str(next_state).strip(' /')
+
+						from_path = str(
+							CURRENT_PAGE_ENDPOINT
+						).strip(' /')
+						if from_path:
+							from_path = str(
+								CURRENT_PAGE_ENDPOINT.with_name(
+									f"from_{CURRENT_PAGE_ENDPOINT.name}.py"
+								)
+							).strip('/ ').replace('/', '__')
+						else:
+							from_path = "from___home.py"
+
+						diff_req_url = Path(
+							'/',
+							'static',
+							'generated_pages',
+							to_path,
+							from_path,
+						)
+
+						diff_req = await fetch(diff_req_url)
+
+						if not diff_req.ok:
+							raise RuntimeError(
+								f"Wrong request to {diff_req_url}: {diff_req.status}"
+							)
+
 						exec(
-							await fetch(f"{PAGE_STATIC}/to_{page_name}.py"),
+							await diff_req.text(),
 							globals(),
 						)
 						return True
@@ -294,7 +337,6 @@ class Transition:
 				return True
 			except ImportError:
 				pass
-
 
 	async def _call_after(
 		self,
@@ -320,7 +362,10 @@ class Transition:
 		# else:
 		# 	print(f" Transition {self} has no after")
 
-		valid_next_state: bool = next_state is not None and not isinstance(next_state, ViewForwardRef)
+		valid_next_state: bool = (
+			next_state is not None and
+			not isinstance(next_state, (ViewForwardRef, str))
+		)
 		if valid_next_state:
 			ns_after_fn = next_state._after_fn.get(next_state)
 
