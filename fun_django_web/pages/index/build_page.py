@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 
 from django_declarative_front import base_render as base
 
@@ -10,12 +10,20 @@ def build_page():
 		with page.tag("main", klass="app-main main-card", id="mainContent"):
 			page.tag("h1").text("Index")
 
-			for folder in sorted(os.listdir("fun_django_web/pages")):
-				match folder:
+			pages_dir = Path("fun_django_web/pages")
+			for page_folder in sorted(pages_dir.iterdir()):
+				if (
+					not page_folder.is_dir() and
+					not (page_folder / f"{page_folder.name}.py").exists()
+				):
+					continue
+
+				match page_folder.name:
 					case "index":
 						continue
-					case _ if folder.startswith("__"):
+					case _ if page_folder.name.startswith("__"):
 						continue
 					case _:
-						if os.path.isdir(f"fun_django_web/pages/{folder}"):
-							page.tag("a", href=f"/{folder}", klass="btn btn-primary").text(folder)
+						page.tag("a", href=f"{page_folder.name}/", klass="btn btn-primary").text(page_folder)
+
+	return page
