@@ -1,5 +1,4 @@
 from __future__ import annotations
-from pathlib import Path
 
 from django_declarative_front import BaseView, backend, State, Fact, Callback, Request, Doc
 from django_declarative_front import NotificationCSS, ButtonCSS
@@ -11,7 +10,7 @@ from .css import CSS
 @Doc("Test5 page view that tries to integrate declarative events as workflows")
 class view(BaseView):
 	class Meta:
-		_endpoint = Path("test5_lib")
+		_endpoint = "test5_lib"
 		_page = build_page()
 		_stylesheets = [
 			CSS,
@@ -67,7 +66,12 @@ class view(BaseView):
 	class Disabled(State):
 		enable = State.to(BaseView.Enabled)
 		reset = State.to_itself()
-		leave = State.to_outside('/')
+		leave = State.to_outside(
+			'/',
+			# TODO: convert one_page to bool and resolve through urlpatterns
+			one_page="fun_django_web/pages/index/index.py",
+			preload=True
+		)
 
 		@Doc("Increment the disabled counter by 1")
 		@staticmethod
@@ -131,7 +135,7 @@ class view(BaseView):
 	disable_event = Callback.click(Meta._page.disable_btn.id).do(BaseView.disable)
 	reset_event = Callback.click(Meta._page.reset_btn.id).do(BaseView.reset)
 	save_event = Callback.click(Meta._page.save_btn.id).do(Saving.get_time_request)
-	Callback.click(Meta._page.leave_btn.id).do(BaseView.leave)
+	leave_event = Callback.click(Meta._page.leave_btn.id).do(BaseView.leave)
 
 	@Doc("In the backend, save the data")
 	@backend
