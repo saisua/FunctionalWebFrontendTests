@@ -1,6 +1,7 @@
 from typing import Annotated, get_origin as get_typing_origin
 from inspect import isfunction
 from pathlib import Path
+import dataclasses
 
 
 PRIMITIVE_TYPES = (
@@ -81,12 +82,27 @@ class SerializerCSS:
 		return key
 
 	@staticmethod
-	def _process_cls(processed_cls: type, *, root: bool = False):
+	def _process_cls(processed_cls: type | None, *, root: bool = False):
+		if processed_cls is None:
+			return None, None
+
 		print(f"Processing {processed_cls}")
 
 		data = dict(processed_cls.__dict__)
 		if root and 'attrs' in data:
 			data.update(data.pop("attrs"))
+
+		for base in processed_cls.__mro__[1:]:
+			if base is object:
+				continue
+			dc_fields = getattr(base, '__dataclass_fields__', {})
+			for key, field_info in dc_fields.items():
+				if key in data or key.startswith('_'):
+					continue
+				if field_info.default is not dataclasses.MISSING:
+					data[key] = field_info.default
+				elif field_info.default_factory is not dataclasses.MISSING:
+					data[key] = field_info.default_factory()
 
 		annotations = processed_cls.__annotations__
 		if hasattr(processed_cls, '__base__'):
