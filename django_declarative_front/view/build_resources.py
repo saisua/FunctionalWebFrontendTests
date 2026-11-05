@@ -151,7 +151,7 @@ def gen_build_resources(
 				transition_page: Page | None = None
 				if hasattr(transition_view, "_page"):
 					transition_page = transition_view._page
-				elif hasattr(transition_view, 'Meta') and hasattr(meta_cls.Meta, "_page"):
+				elif hasattr(transition_view, 'Meta') and hasattr(transition_view.Meta, "_page"):
 					transition_page = transition_view.Meta._page
 
 				if transition_page is not None:
