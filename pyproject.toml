@@ -18,7 +18,7 @@ dependencies = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["django_declarative_front*"]
+where = ["django_declarative_front"]
 
 [project.optional-dependencies]
 docs = [
