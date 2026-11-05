@@ -14,6 +14,9 @@ wheels/
 # Virtual environments
 .venv
 
+#.env variables
+.env
+
 # Graph util output
 generated/
 
